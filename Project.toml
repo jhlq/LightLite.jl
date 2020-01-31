@@ -1,0 +1,14 @@
+name = "LightLite"
+uuid = "7a9817e4-2d64-4a0f-858c-c22674c4cf7f"
+authors = ["Marcus Appelros <marcus.appelros@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Graphics = "a2bd30eb-e257-5431-a919-1863eab51364"
+Gtk = "4c0ca9eb-093a-5379-98c5-f87ac0bbbf44"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+Graphics = "0.4, 1"
+Gtk = "0.18, 1"
+julia = "1"
