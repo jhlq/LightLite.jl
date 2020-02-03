@@ -41,7 +41,31 @@ if result==1
 else 
 	@test pr1["tot"]<0.01 && isapprox(pr0["tot"],1)
 end
-@test isapprox(sum(p(ps)),1)
+@test isapprox(p(ps)["tot"],1)
+
+function andgate(b1,b2)
+	ps=photons(3)
+	if b1>0
+		apply!(ps,1,X)
+	end
+	if b2>0
+		apply!(ps,2,X)
+	end
+	apply!(ps,3,ry(-pi/4)) #cH
+	apply!(ps,[1,3],cnot)
+	apply!(ps,3,ry(pi/4))
+	apply!(ps,3,H) #cZ
+	apply!(ps,[2,3],cnot)
+	apply!(ps,3,H)
+	apply!(ps,3,ry(-pi/4)) #cH
+	apply!(ps,[1,3],cnot)
+	apply!(ps,3,ry(pi/4))
+	return ps
+end
+@test isapprox(p(andgate(0,0),"**0")["tot"],1)
+@test isapprox(p(andgate(0,1),"**0")["tot"],1)
+@test isapprox(p(andgate(1,0),"**0")["tot"],1)
+@test isapprox(p(andgate(1,1),"**1")["tot"],1)
 
 g=makegrid(1)
 @test length(g)==13

@@ -9,6 +9,10 @@ X=[0 1;1 0]
 Y=[0 -1im;1im 0]
 Z=[1 0;0 -1]
 H=[1 1;1 -1]/sqrt(2)
+S=[1 0;0 1im]
+rx(th)=[cos(th/2) -1im*sin(th/2);-1im*sin(th/2) cos(th/2)]
+ry(th)=[cos(th/2) -sin(th/2);sin(th/2) cos(th/2)]
+rz(th)=[1 0;0 exp(1im*th)]
 
 function apply!(pho::Photon,gate::Matrix)
 	pho.pol=gate*pho.pol
@@ -80,11 +84,15 @@ function measure!(ps::Photons,n::Int)
 	end
 end
 function p(ps::Photons)
-	pr=zeros(length(ps.state))
-	for i in 1:length(pr)
-		pr[i]=p(ps.state[i])
+	d=Dict{String,AbstractFloat}()
+	tot=0.0
+	for i in 1:length(ps.labels)
+		pr=p(ps.state[i])
+		d[ps.labels[i]]=pr
+		tot+=pr
 	end
-	return pr
+	d["tot"]=tot
+	return d
 end
 function matches(label::String,s::String)
 	for i in 1:length(label)
