@@ -1,9 +1,10 @@
 using LinearAlgebra
 mutable struct Photon
-	pol::Array{Complex{Float64},1}
+	pol::Array{Complex{AbstractFloat},1}
 end
 photon()=Photon([1,0])
-p(pho::Photon)=abs(pho.pol[2]^2)
+p(c::Complex)=abs(c^2)
+p(pho::Photon)=p(pho.pol[2])
 X=[0 1;1 0]
 Y=[0 -1im;1im 0]
 Z=[1 0;0 -1]
@@ -14,11 +15,11 @@ function apply!(pho::Photon,gate::Matrix)
 end
 mutable struct Photons
 	n::Int
-	state::Array{Complex{Float64},1}
+	state::Array{Complex{AbstractFloat},1}
 	labels::Array{String}
 end
 function photons(n::Int)
-	s=zeros(Complex{Float64},n^2)
+	s=zeros(Complex{AbstractFloat},2^n)
 	s[1]=1
 	l=["0","1"]
 	for i in 2:n
@@ -46,32 +47,106 @@ function apply!(ps::Photons,i::Int,gate::Matrix)
 	m=makemat(ps.n,[i],[gate])
 	ps.state=m*ps.state
 end
-function apply!(ps::Photons,ia::Array{Int},gates::Array{Matrix})
+function apply!(ps::Photons,ia::Array{Int},gates::Array)
 	m=makemat(ps.n,ia,gates)
 	ps.state=m*ps.state
 end
+function apply!(ps::Photons,ct::Array{Int},f::Function)
+	m=f(ct,ps)
+	ps.state=m*ps.state
+end
+function measure!(ps::Photons,n::Int)
+	p0=0.0
+	w0=Complex{AbstractFloat}[]
+	w1=Complex{AbstractFloat}[]
+	for i in 1:length(ps.state)
+		if ps.labels[i][n]=='0'
+			p0+=p(ps.state[i])
+			push!(w0,ps.state[i])
+			push!(w1,0)
+		else
+			push!(w1,ps.state[i])
+			push!(w0,0)
+		end
+	end
+	if rand()>p0
+		w1=w1/sqrt(1-p0)
+		ps.state=w1
+		return 1
+	else
+		w0=w0/sqrt(p0)
+		ps.state=w0
+		return 0
+	end
+end
+function p(ps::Photons)
+	pr=zeros(length(ps.state))
+	for i in 1:length(pr)
+		pr[i]=p(ps.state[i])
+	end
+	return pr
+end
+function matches(label::String,s::String)
+	for i in 1:length(label)
+		if !(s[i]=='*' || label[i]==s[i])
+			return false
+		end
+	end
+	return true
+end
+function states(ps::Photons,s::String)
+	if length(ps.labels[1])!=length(s)
+		error("State contains "*string(length(ps.labels[1]))*" qubits but "*s*" refers "*string(length(s))*".")
+	end
+	ms=Int[]
+	for i in 1:length(ps.labels)
+		if matches(ps.labels[i],s)
+			push!(ms,i)
+		end
+	end
+	if length(ms)==0
+		error(s*" matches no states.")
+	end
+	return ms
+end
 function p(ps::Photons,s::String)
+	if in('*',s)
+		ws=states(ps,s)
+		d=Dict{String,AbstractFloat}()
+		tot=0.0
+		for w in ws
+			tp=p(ps.state[w])
+			d[ps.labels[w]]=tp
+			tot+=tp
+		end
+		d[s]=tot
+		d["tot"]=tot
+		return d
+	end
 	si=findfirst(x->x==s,ps.labels)
 	if !isa(si,Int)
 		error("State "*s*" not found.")
 	end
 	return abs(ps.state[si])^2
 end
-function cnot(column::Int,ct::Array{Int},ps::Photons)
-	s=ps.labels[column]
+function cnot(ct::Array{Int},ps::Photons)
 	control=ct[1]
 	target=ct[2]
-	c=parse(Bool,s[control])
-	a=zeros(ps.n)
-	if c
-		t=parse(Bool,s[target])
-		ns=s[1:target-1]*string(Int(!t))*s[target+1:end]
-		nsi=findfirst(x->x==ns,ps.labels)
-		a[nsi]=1
-	else
-		a[column]=1
+	l=length(ps.state)
+	m=zeros(l,l)
+	for column in 1:l
+		s=ps.labels[column]
+		c=parse(Bool,s[control])
+		if c
+			t=parse(Bool,s[target])
+			ns=s[1:target-1]*string(Int(!t))*s[target+1:end]
+			nsi=findfirst(x->x==ns,ps.labels)
+			m[column,nsi]=1
+		else
+			m[column,column]=1
+		end
 	end
-	return a
+	return m
 end
 #=
 abstract type Gate end
