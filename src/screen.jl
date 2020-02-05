@@ -316,7 +316,7 @@ function drawboard(screen,ctx,w,h)
 		loc=hex_to_pixel(p.loc[1],p.loc[2],size)
 		floc=(loc[1]+offset[1]+w/2,loc[2]+offset[2]+h/2)
 		rad=size*0.866/3*abs(p.amp)
-		set_source_rgb(ctx,1,1,1) 
+		set_source_rgba(ctx,1,1,1,0.5) 
 		arc(ctx, floc[1],floc[2],rad, 0, 2pi)
 		fill(ctx)
 	end
