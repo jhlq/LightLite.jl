@@ -62,7 +62,7 @@ end
 function step!(b::Board,steps::Int=1)
 	if !b.emitted
 		for em in b.emitters
-			push!(b.photons,Photon(em.pol,em.loc,em.dir,0,1))
+			push!(b.photons,Photon(em.pol,em.loc,em.dir,0,1,0))
 		end
 		b.state=photons(b.photons)
 		b.emitted=true
@@ -71,6 +71,10 @@ function step!(b::Board,steps::Int=1)
 		cs=Component[]
 		for pind in 1:length(b.photons)
 			p=b.photons[pind]
+			if p.trapped>0
+				p.trapped-=1
+				continue
+			end
 			p.loc=p.loc.+p.dir
 			p.amp+=p.der
 			if abs(p.amp)>0.999
@@ -134,7 +138,6 @@ function apply!(b::Board,gate::Gate)
 	m=gate.makemat(b.state,gate.photons)
 	b.state.state=m*b.state.state
 	gate.boardmods!(b,gate.photons)
-	gate.photons=[]
 end
 mutable struct Measure<:Component
 	loc::Tuple{Int,Int,Int}

@@ -5,8 +5,9 @@ mutable struct Photon
 	dir
 	amp::Number
 	der::Number
+	trapped::Int
 end
-photon()=Photon([1,0],(0,0,0),(1,0,0),1,-1)
+photon()=Photon([1,0],(0,0,0),(1,0,0),1,-1,0)
 p(c::Complex)=abs(c)^2
 p(pho::Photon)=p(pho.pol[2])
 X=[0 1;1 0]

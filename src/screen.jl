@@ -117,6 +117,7 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		g[2,row]=spexpshell
 		row+=1
 		g[2,row]=centerbtn
+		row+=1
 		push!(box,screen.c)	
 		push!(box,g)
 		screen.g=g
@@ -131,22 +132,22 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		set_gtk_property!(box,:expand,screen.c,true)
 		screen.win=GtkWindow(box,"Weilianqi $(screen.board.name)",window[1],window[2])
 		showall(screen.win)
-		id = signal_connect(savebtn, "clicked") do widget
+		id = @guarded signal_connect(savebtn, "clicked") do widget
 			screen.board.name=nameentry.text[String]
 			save(screen.board)
 		end
-		id = signal_connect(loadbtn, "clicked") do widget
+		id = @guarded signal_connect(loadbtn, "clicked") do widget
 			@sigatom load(nameentry.text[String])
 		end
-		id = signal_connect(stepbtn, "clicked") do widget
+		id = @guarded signal_connect(stepbtn, "clicked") do widget
 			step!(screen.board)
 			drawboard(screen)
 		end
-		id = signal_connect(resetbtn, "clicked") do widget
+		id = @guarded signal_connect(resetbtn, "clicked") do widget
 			reset!(screen.board)
 			drawboard(screen)
 		end
-		id = signal_connect(zoomscale, "value-changed") do widget
+		id = @guarded signal_connect(zoomscale, "value-changed") do widget
 			wval=Gtk.G_.value(widget)
 			screen.sizemod=wval/10
 			x=Gtk.G_.value(spexpx)
@@ -154,15 +155,15 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			#center!(screen,(x,y))
 			drawboard(screen)
 		end
-		id = signal_connect(xoscale, "value-changed") do widget
+		id = @guarded signal_connect(xoscale, "value-changed") do widget
 			screen.panx=-Gtk.G_.value(widget)*10
 			drawboard(screen)
 		end
-		id = signal_connect(yoscale, "value-changed") do widget
+		id = @guarded signal_connect(yoscale, "value-changed") do widget
 			screen.pany=-Gtk.G_.value(widget)*10
 			drawboard(screen)
 		end
-		id = signal_connect(deletecheck, "clicked") do widget
+		id = @guarded signal_connect(deletecheck, "clicked") do widget
 			screen.delete=widget.active[Bool]
 		end
 		id = @guarded signal_connect(expbtn, "clicked") do widget
@@ -172,12 +173,12 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			remain=expandboard!(screen.board,Integer(r),[(x,y,2)])
 			drawboard(screen)
 		end
-		id = signal_connect(centerbtn, "clicked") do widget
+		id = @guarded signal_connect(centerbtn, "clicked") do widget
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
 			center!(screen,(x,y))
 		end
-		id = signal_connect(placebtn, "clicked") do widget
+		id = @guarded signal_connect(placebtn, "clicked") do widget
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
 			nu=components[Gtk.bytestring( GAccessor.active_text(compscombo) )]
@@ -213,12 +214,16 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		exists=in(hex,keys(screen.board.map))
 		if exists
 			comp=screen.board[hex...]
-			if screen.delete==true && screen.board[hex...]!=0
+			if screen.delete==true && comp!=0
 				remove!(board,hex)
 			elseif comp==0
 				place!(board,nu,hex)
 			elseif isa(comp,Emitter) && (event.state&4 == 4) #ctrl
 				comp.pol=X*comp.pol
+			else
+				#lab=GtkLabel(string(hex))
+				#g[2,row]=lab
+				#reveal(g)
 			end
 			drawboard(screen,ctx,w,h)
 			reveal(widget)
@@ -302,7 +307,7 @@ function drawboard(screen,ctx,w,h)
 		set_source_rgb(ctx,0,0,0) 
 		select_font_face(ctx, "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD);
 		set_font_size(ctx, 2*rad);
-		move_to(ctx, floc[1]-rad/2, floc[2]+rad/2);
+		move_to(ctx, floc[1]-rad/1.5, floc[2]+rad/2);
 		show_text(ctx, comp.label);
 		stroke(ctx);
 	end
