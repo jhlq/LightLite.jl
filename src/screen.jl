@@ -1,4 +1,4 @@
-using Gtk, Graphics
+using Gtk, Graphics, Cairo
 include("board.jl")
 
 mutable struct Screen
@@ -26,12 +26,14 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 	if win==0
 		box=GtkBox(:h)
 		savebtn=GtkButton("Save")
-		loadbtn=GtkButton("Load")
 		nameentry=GtkEntry()
+		loadbtn=GtkButton("Load")
+		stepbtn=GtkButton("Step")
+		resetbtn=GtkButton("Reset")
 		set_gtk_property!(nameentry,:text,screen.board.name)
 		scorelabel=GtkLabel("")
 		newslabel=GtkLabel("")
-		scalemaxfac=100
+		scalemaxfac=30
 		zoomscale = GtkScale(false, 1:scalemaxfac*10)
 		zlabel=GtkLabel("Zoom")
 		zadj=Gtk.Adjustment(zoomscale)
@@ -54,19 +56,19 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		xexplabel=GtkLabel("X")
 		yexplabel=GtkLabel("Y")
 		shellexplabel=GtkLabel("radius")
-		placebtn=GtkButton("Place comp at")
+		placebtn=GtkButton("Place component at")
 		expbtn=GtkButton("Expand board at (X,Y)")
 		centerbtn=GtkButton("Center board on (X,Y)")
-		deletecheck=GtkCheckButton("Enable deletion")
+		deletecheck=GtkCheckButton("Remove on click")
 		set_gtk_property!(deletecheck,:active,screen.delete)
 		clabel1=GtkLabel("Place")
-		clabel2=GtkLabel("comps")
+		clabel2=GtkLabel("")
 		withlabel=GtkLabel("with")
 		compscombo=GtkComboBoxText()
 		staind=0;staindset=false
-		for c in keys(gates)
+		for c in keys(components)
 			push!(compscombo,c)
-			if !staindset && c=="X"
+			if !staindset && c=="Emitter"
 				staindset=true
 			elseif !staindset
 				staind+=1
@@ -74,31 +76,47 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		end
 		set_gtk_property!(compscombo,:active,staind)
 		g=GtkGrid()
-		g[1,1]=savebtn
-		g[2,1]=nameentry
-		g[3,1]=loadbtn
-		g[1,2]=scorelabel
-		g[2,2]=newslabel
-		g[2,4]=deletecheck
-		g[1,5]=clabel1
-		g[3,5]=clabel2
-		g[2,5]=compscombo
-		g[1,6]=zlabel
-		g[1,7]=xlabel
-		g[1,8]=ylabel
-		g[2,6]=zoomscale
-		g[2,7]=xoscale
-		g[2,8]=yoscale
-		g[2,9]=placebtn
-		g[1,10]=xexplabel
-		g[1,11]=yexplabel
-		g[2,10]=spexpx
-		g[2,11]=spexpy
-		g[1,13]=shellexplabel
-		g[2,13]=spexpshell
-		g[3,12]=withlabel
-		g[2,12]=expbtn
-		g[2,14]=centerbtn
+		row=1
+		g[1,row]=savebtn
+		g[2,row]=nameentry
+		g[3,row]=loadbtn
+		row+=1
+		g[1,row]=scorelabel
+		g[2,row]=newslabel
+		row+=1
+		g[2,row]=stepbtn
+		g[3,row]=resetbtn
+		row+=1
+		g[1,row]=clabel1
+		g[3,row]=clabel2
+		g[2,row]=compscombo
+		row+=1
+		g[2,row]=deletecheck
+		row+=1
+		g[1,row]=zlabel
+		g[2,row]=zoomscale
+		row+=1
+		g[1,row]=xlabel
+		g[2,row]=xoscale
+		row+=1
+		g[1,row]=ylabel
+		g[2,row]=yoscale
+		row+=1
+		g[2,row]=placebtn
+		row+=1
+		g[1,row]=xexplabel
+		g[2,row]=spexpx
+		row+=1
+		g[1,row]=yexplabel
+		g[2,row]=spexpy
+		row+=1
+		g[3,row]=withlabel
+		g[2,row]=expbtn
+		row+=1
+		g[1,row]=shellexplabel
+		g[2,row]=spexpshell
+		row+=1
+		g[2,row]=centerbtn
 		push!(box,screen.c)	
 		push!(box,g)
 		screen.g=g
@@ -120,16 +138,21 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		id = signal_connect(loadbtn, "clicked") do widget
 			@sigatom load(nameentry.text[String])
 		end
-		signal_connect(compscombo, "changed") do widget, others...
-			#compname=Gtk.bytestring( GAccessor.active_text(compscombo) ) 
-			#screen.compparams[end]=compname
+		id = signal_connect(stepbtn, "clicked") do widget
+			step!(screen.board)
+			drawboard(screen)
+		end
+		id = signal_connect(resetbtn, "clicked") do widget
+			reset!(screen.board)
+			drawboard(screen)
 		end
 		id = signal_connect(zoomscale, "value-changed") do widget
 			wval=Gtk.G_.value(widget)
-			screen.sizemod=wval/10+exp(wval/100)
+			screen.sizemod=wval/10
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
-			center!(screen,(x,y))
+			#center!(screen,(x,y))
+			drawboard(screen)
 		end
 		id = signal_connect(xoscale, "value-changed") do widget
 			screen.panx=-Gtk.G_.value(widget)*10
@@ -142,23 +165,23 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		id = signal_connect(deletecheck, "clicked") do widget
 			screen.delete=widget.active[Bool]
 		end
-		id = signal_connect(expbtn, "clicked") do widget
-			x=Gtk.G_.value(spexpx)
-			y=Gtk.G_.value(spexpy)
+		id = @guarded signal_connect(expbtn, "clicked") do widget
+			x=Int(Gtk.G_.value(spexpx))
+			y=Int(Gtk.G_.value(spexpy))
 			r=Gtk.G_.value(spexpshell)
-			remain=expandboard!(screen,Integer(r),[(x,y,2)])
+			remain=expandboard!(screen.board,Integer(r),[(x,y,2)])
+			drawboard(screen)
 		end
 		id = signal_connect(centerbtn, "clicked") do widget
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
-			center(screen,(x,y))
+			center!(screen,(x,y))
 		end
 		id = signal_connect(placebtn, "clicked") do widget
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
-			nu=gates[Gtk.bytestring( GAccessor.active_text(compscombo) )]
-			place!(screen,nu)
-			sync!(screen)
+			nu=components[Gtk.bytestring( GAccessor.active_text(compscombo) )]
+			place!(screen.board,nu,[Int(x),Int(y)])
 			drawboard(screen)
 		end
 	end
@@ -175,8 +198,7 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		ctx=getgc(widget)
 		h=height(screen.c)
 		w=width(screen.c)
-		#nu=newcomp(screen.color,0,gates[Gtk.bytestring( GAccessor.active_text(compscombo) )])
-		nu=gates[Gtk.bytestring( GAccessor.active_text(compscombo) )]
+		nu=components[Gtk.bytestring( GAccessor.active_text(compscombo) )]
 		size=screen.size
 		offx=screen.offsetx+screen.panx
 		offy=screen.offsety+screen.pany
@@ -188,22 +210,21 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		downdiff=abs(round(qdown)-qdown)+abs(round(rdown)-rdown)
 		best=findmin([maindiff,updiff,downdiff])[2]
 		hex=[(round(Int,q),round(Int,r),2),(round(Int,qup),round(Int,rup),3),(round(Int,qdown),round(Int,rdown),1)][best]
-		#nu.loc=hex
 		exists=in(hex,keys(screen.board.map))
 		if exists
-			if screen.delete==true# && screen.map[hex]!=0 && isa(screen.map[hex],Unit)
-				remove!(board,screen.map[hex])
-			else#if screen.map[hex]==0 && placeable(screen,nu) 
+			comp=screen.board[hex...]
+			if screen.delete==true && screen.board[hex...]!=0
+				remove!(board,hex)
+			elseif comp==0
 				place!(board,nu,hex)
+			elseif isa(comp,Emitter) && (event.state&4 == 4) #ctrl
+				comp.pol=X*comp.pol
 			end
-			#sync!(screen)
 			drawboard(screen,ctx,w,h)
 			reveal(widget)
 		end
-		#sync!(screen) #sync twice to correct corruptions of reality, usually works
 	end
 	#placeseq!(board)	
-	#sync!(screen)
 	show(screen.c)
 	return screen
 end
@@ -238,9 +259,6 @@ function drawboard(screen,ctx,w,h)
 	rectangle(ctx, 0, 0, w, h)
 	set_source_rgb(ctx, screen.bgcolor...)
 	fill(ctx)
-	#set_source_rgb(ctx, screen.color...)
-	#arc(ctx, size, size, 3size, 0, 2pi)
-	#fill(ctx)
 	offx=screen.offsetx+screen.panx
 	offy=screen.offsety+screen.pany
 	set_source_rgb(ctx, screen.gridcolor...)
@@ -264,19 +282,43 @@ function drawboard(screen,ctx,w,h)
 		set_source_rgb(ctx,screen.gridcolor...) 
 		arc(ctx, floc[1],floc[2],rad+1, 0, 2pi)
 		stroke(ctx)
-		set_source_rgb(ctx,(1,1,1)...)
-		#set_source_rgb(ctx,comp.color...)
-		arc(ctx,floc[1],floc[2],rad, 0, 2pi) #why isn't the circle radius the distance between locs? Whyyyy whyyyy someone pleeease fiiix. It's kinda cute with those small dots. Also they fit perfectly within the triangles
-		fill(ctx)
-		#=if !isempty(comp.graphic)
-			set_source_rgb(ctx,screen.bgcolor...)
-			points=Point[]
-			for p in comp.graphic
-				push!(points,Point(floc[1]+rad*p[1],floc[2]+rad*p[2]))
+		if isa(comp,Emitter)
+			if comp.pol==[1,0]
+				set_source_rgb(ctx,1,0,0)
+			elseif comp.pol==[0,1]
+				set_source_rgb(ctx,0,1,0)
 			end
-			polygon(ctx,points)
-			fill(ctx)
-		end=#
+		elseif isa(comp,Measure) && length(comp.results)>0
+			if comp.results[end]==0
+				set_source_rgb(ctx,1,0,0)
+			elseif comp.results[end]==1
+				set_source_rgb(ctx,0,1,0)
+			end
+		else
+			set_source_rgb(ctx,1,1,1)
+		end
+		arc(ctx,floc[1],floc[2],rad, 0, 2pi)
+		fill(ctx)
+		set_source_rgb(ctx,0,0,0) 
+		select_font_face(ctx, "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD);
+		set_font_size(ctx, 2*rad);
+		move_to(ctx, floc[1]-rad/2, floc[2]+rad/2);
+		show_text(ctx, comp.label);
+		stroke(ctx);
+	end
+	for p in screen.board.photons
+		offset=(offx,offy)
+		if p.loc[3]==1
+			offset=offset.+(-cos(pi/6)*size,sin(pi/6)*size)
+		elseif p.loc[3]==3
+			offset=offset.+(-cos(pi/6)*size,-sin(pi/6)*size)
+		end
+		loc=hex_to_pixel(p.loc[1],p.loc[2],size)
+		floc=(loc[1]+offset[1]+w/2,loc[2]+offset[2]+h/2)
+		rad=size*0.866/3*abs(p.amp)
+		set_source_rgb(ctx,1,1,1) 
+		arc(ctx, floc[1],floc[2],rad, 0, 2pi)
+		fill(ctx)
 	end
 	#showall(screen.win) #should probably look up the difference between all these revealing methods
 	reveal(screen.c)
@@ -286,21 +328,6 @@ function drawboard(screen::Screen)
 	h=height(screen.c)
 	w=width(screen.c)
 	drawboard(screen,ctx,w,h)
-end
-
-function expandboard!(screen::Screen,shells::Integer=6,initlocs=[(6,6,2)],reveal=true)
-	patch=makegrid(shells,initlocs)
-	for loc in patch
-		if !in(loc,keys(screen.map))
-			screen.map[loc]=0
-			push!(screen.board.grid,loc)
-		end
-	end
-	push!(screen.sequence,(:expand,[shells,initlocs]))
-	if reveal #without this there is sometimes some severe error (when loadicing)
-		drawboard(screen)
-	end
-	return "<3"
 end
 function zoom!(screen,factor)
 	screen.sizemod*=factor

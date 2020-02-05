@@ -39,6 +39,20 @@ function photons(n::Int)
 	ps=Photons(n,s,l)
 	return ps
 end
+function photons(ap::Array{Photon})
+	n=length(ap)
+	if n<1
+		return Photons(n,[],[])
+	end
+	s=ap[1].pol
+	l=["0","1"]
+	for i in 2:n
+		s=kron(s,ap[i].pol)
+		l=kron(l,["0","1"])
+	end
+	ps=Photons(n,s,l)
+	return ps
+end
 function makemat(n::Int,ia::Array{Int},gates::Array)
 	if n==1
 		return gates[1]
