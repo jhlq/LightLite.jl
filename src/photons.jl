@@ -1,9 +1,13 @@
 using LinearAlgebra
 mutable struct Photon
 	pol::Array{Complex{AbstractFloat},1}
+	loc
+	dir
+	amp::Number
+	der::Number
 end
-photon()=Photon([1,0])
-p(c::Complex)=abs(c^2)
+photon()=Photon([1,0],(0,0,0),(1,0,0),1,-1)
+p(c::Complex)=abs(c)^2
 p(pho::Photon)=p(pho.pol[2])
 X=[0 1;1 0]
 Y=[0 -1im;1im 0]
@@ -23,6 +27,9 @@ mutable struct Photons
 	labels::Array{String}
 end
 function photons(n::Int)
+	if n<1
+		return Photons(n,[],[])
+	end
 	s=zeros(Complex{AbstractFloat},2^n)
 	s[1]=1
 	l=["0","1"]
@@ -49,6 +56,13 @@ function makemat(n::Int,ia::Array{Int},gates::Array)
 		m=kron(m,mc[i])
 	end
 	return m
+end
+function makemat(n::Int,ia::Array{Int},gate::Matrix)
+	gates=[gate]
+	for i in 2:length(ia)
+		push!(gates,gate)
+	end
+	return makemat(n,ia,gates)
 end
 function apply!(ps::Photons,i::Int,gate::Matrix)
 	m=makemat(ps.n,[i],[gate])
