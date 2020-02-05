@@ -7,3 +7,4 @@ components["Z"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int})->makemat
 components["H"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int})->makemat(state.n,photons,H),(b::Board,photons::Array{Int})->nothing,"H")
 components["Measure"]=Measure((0,0,0),[],[],"∡")
 components["Emitter"]=newEmitter()
+components["Mirror"]=newMirror()

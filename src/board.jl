@@ -59,7 +59,7 @@ function place!(b::Board,c::Component,loc::Array)
 	end
 	place!(b,c,Tuple(loc))
 end
-function step!(b::Board)
+function step!(b::Board,steps::Int=1)
 	if !b.emitted
 		for em in b.emitters
 			push!(b.photons,Photon(em.pol,em.loc,em.dir,0,1))
@@ -67,24 +67,25 @@ function step!(b::Board)
 		b.state=photons(b.photons)
 		b.emitted=true
 	end
-	cs=Component[]
-	for pind in 1:length(b.photons)
-		p=b.photons[pind]
-		p.loc=p.loc.+p.dir
-		p.amp+=p.der
-		if abs(p.amp)>0.999
-			p.der=-p.der
+	for st in 1:steps
+		cs=Component[]
+		for pind in 1:length(b.photons)
+			p=b.photons[pind]
+			p.loc=p.loc.+p.dir
+			p.amp+=p.der
+			if abs(p.amp)>0.999
+				p.der=-p.der
+			end
+			c=b[p.loc...]
+			if isa(c,Component) && hasfield(typeof(c),:photons)
+				push!(c.photons,pind)
+				push!(cs,c)
+			end
 		end
-		c=b[p.loc...]
-		if isa(c,Component) && hasfield(typeof(c),:photons)
-			push!(c.photons,pind)
-			push!(cs,c)
+		for c in cs
+			apply!(b,c)
 		end
-	end
-	for c in cs
-		apply!(b,c)
-	end
-		
+	end	
 end
 function reset!(b::Board)
 	b.photons=[]
@@ -133,6 +134,7 @@ function apply!(b::Board,gate::Gate)
 	m=gate.makemat(b.state,gate.photons)
 	b.state.state=m*b.state.state
 	gate.boardmods!(b,gate.photons)
+	gate.photons=[]
 end
 mutable struct Measure<:Component
 	loc::Tuple{Int,Int,Int}
@@ -149,6 +151,24 @@ function apply!(b::Board,measure::Measure)
 	for i in 1:n
 		push!(measure.results,measure!(b.state,measure.photons[end-n+i]))
 	end
+end
+mutable struct Mirror<:Component
+	loc::Tuple{Int,Int,Int}
+	orientation::Tuple{Int,Int,Int}
+	photons::Array{Int}
+	label::String
+end
+newMirror()=Mirror((0,0,0),(1,1,0),[],"")
+function apply!(b::Board,mirror::Mirror)
+	n=length(mirror.photons)
+	for i in 1:n
+		p=b.photons[mirror.photons[i]]
+		ndir=[0,0,0]
+		ndir[1]=p.dir[2]*mirror.orientation[1]
+		ndir[2]=p.dir[1]*mirror.orientation[2]
+		p.dir=Tuple(ndir)
+	end
+	mirror.photons=[]
 end
 function expandboard!(board::Board,shells::Integer=6,initlocs=[(6,6,2)])
 	patch=makegrid(shells,initlocs)

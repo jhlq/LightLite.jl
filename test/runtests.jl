@@ -29,3 +29,10 @@ place!(b,gates["X"],[0,1])
 b.emitters[1].dir=(0,1,0)
 step!(b)
 @test p(b.state,"1")==1
+
+b=newBoard()
+place!(b,newEmitter(),[0,0])
+place!(b,newMirror(),[1,0])
+step!(b,10)
+@test b.photons[1].dir!=(1,0,0)
+@test b.photons[1].loc[1]<0 || b.photons[1].loc[2]>0
