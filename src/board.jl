@@ -10,6 +10,30 @@ mutable struct Emitter<:Component
 	label::String
 end
 newEmitter()=Emitter((0,0,0),(1,0,0),[1,0],"~")
+function makegrid(layers=3,startlocs=[(0,0,2)],groundlevel=false)
+	grid=Set{Tuple}()
+	push!(grid,startlocs...)
+	connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
+	if groundlevel
+		connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0)]
+	end
+	for layer in 1:layers
+		tgrid=Array{Tuple,1}()
+		for loc in grid
+			if loc[3]==2
+				for c in connections
+					x,y,z=loc
+					x+=c[1];y+=c[2];z+=c[3]
+					push!(tgrid,(x,y,z))
+				end
+			end
+		end
+		for t in tgrid
+			push!(grid,t)
+		end
+	end
+	return grid
+end
 mutable struct Board
 	name
 	grid
