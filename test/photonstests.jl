@@ -68,13 +68,13 @@ end
 @test isapprox(p(andgate(1,0),"**0")["tot"],1)
 @test isapprox(p(andgate(1,1),"**1")["tot"],1)
 
-ps=photons(3,"100")
+ps=photons("100")
 apply!(ps,[1,2,3],toffoli)
 @test isapprox(ps(ps,"**0")["tot"],1)
-ps=photons(3,"010")
+ps=photons("010")
 apply!(ps,[1,2,3],toffoli)
 @test isapprox(ps(ps,"**0")["tot"],1)
-ps=photons(3,"110")
+ps=photons("110")
 apply!(ps,[1,2,3],toffoli)
 @test isapprox(ps(ps,"**1")["tot"],1)
 
