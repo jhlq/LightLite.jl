@@ -4,6 +4,8 @@ A qubit is like two connected compasses, the size of the first compass is the pr
 
 The two compasses can be represented by a vector in a sphere, for example a clock where the hands can point out. Two complex numbers are encoded with three parameters by only considering the difference between them: if the two compasses are spun at the same speed the hand of the clock wont move.
 
-Useful links:
-https://algassert.com/quirk
+S=rz(pi/2), S†=rz(-pi/2), T=rz(pi/4), T†=rz(-pi/4).
+
+Useful links:  
+https://algassert.com/quirk  
 https://www.st-andrews.ac.uk/physics/quvis/simulations_html5/sims/blochsphere/blochsphere.html

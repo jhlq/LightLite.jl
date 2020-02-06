@@ -10,6 +10,13 @@ mutable struct Emitter<:Component
 	label::String
 end
 newEmitter()=Emitter((0,0,0),(1,0,0),[1,0],"~")
+directions=Dict{String,Tuple{Int,Int,Int}}()
+directions["right"]=(1,0,0)
+directions["down right"]=(0,1,0)
+directions["down left"]=(-1,1,0)
+directions["left"]=(-1,0,0)
+directions["up left"]=(0,-1,0)
+directions["up right"]=(1,-1,0)
 function makegrid(layers=3,startlocs=[(0,0,2)],groundlevel=false)
 	grid=Set{Tuple}()
 	push!(grid,startlocs...)
@@ -52,7 +59,7 @@ function newBoard(shells=6,initlocs=[(0,0,2)],grid=0,map=Dict())
 	for loc in grid
 		map[loc]=0
 	end
-	board=Board(string(round(Integer,time())),grid,shells,map,[],false,[],photons(0),[])
+	board=Board("circuit",grid,shells,map,[],false,[],photons(0),[])
 	return board
 end
 getindex(b::Board,x::Int,y::Int,z::Int)=haskey(b.map,(x,y,z)) ? b.map[(x,y,z)] : nothing
@@ -149,8 +156,8 @@ end
 
 mutable struct Gate<:Component
 	loc::Tuple{Int,Int,Int}
-	photons::Array{Int}
 	vars::Array{AbstractFloat}
+	photons::Array{Int}
 	makemat::Function
 	boardmods!::Function
 	label::String
@@ -159,7 +166,7 @@ function reset!(g::Gate)
 	g.photons=[]
 end
 function apply!(b::Board,gate::Gate)
-	m=gate.makemat(b.state,gate.photons)
+	m=gate.makemat(b.state,gate.photons,g.vars)
 	b.state.state=m*b.state.state
 	gate.boardmods!(b,gate.photons)
 end
@@ -205,6 +212,19 @@ function expandboard!(board::Board,shells::Integer=6,initlocs=[(6,6,2)])
 			push!(board.grid,loc)
 		end
 	end
-#	push!(board.sequence,(:expand,[shells,initlocs]))
 	return "<3"
+end
+function save(b::Board)
+	str=string(b)
+	dir=joinpath(homedir(),".lightlite","circuits",b.name)
+	open(dir, "w") do io
+		write(io,str);
+	end
+	println("Saved at "*dir)
+end
+function load(name::String)
+	dir=joinpath(homedir(),".lightlite","circuits",name)
+	str=read(dir,String)
+	board=eval(Meta.parse(str))
+	return board
 end

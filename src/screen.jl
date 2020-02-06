@@ -118,6 +118,9 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		row+=1
 		g[2,row]=centerbtn
 		row+=1
+		complab=GtkLabel("\nNothing selected.")
+		g[2,row]=complab
+		row+=1
 		push!(box,screen.c)	
 		push!(box,g)
 		screen.g=g
@@ -130,14 +133,16 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		screen.gui[:yadj]=yadj
 		screen.gui[:deletecheck]=deletecheck
 		set_gtk_property!(box,:expand,screen.c,true)
-		screen.win=GtkWindow(box,"Weilianqi $(screen.board.name)",window[1],window[2])
+		screen.win=GtkWindow(box,"LightLite $(screen.board.name)",window[1],window[2])
 		showall(screen.win)
 		id = @guarded signal_connect(savebtn, "clicked") do widget
 			screen.board.name=nameentry.text[String]
 			save(screen.board)
 		end
 		id = @guarded signal_connect(loadbtn, "clicked") do widget
-			@sigatom load(nameentry.text[String])
+			nboard=load(nameentry.text[String])
+			screen.board=nboard
+			drawboard(screen)
 		end
 		id = @guarded signal_connect(stepbtn, "clicked") do widget
 			step!(screen.board)
@@ -152,7 +157,6 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			screen.sizemod=wval/10
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
-			#center!(screen,(x,y))
 			drawboard(screen)
 		end
 		id = @guarded signal_connect(xoscale, "value-changed") do widget
@@ -217,19 +221,33 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			if screen.delete==true && comp!=0
 				remove!(board,hex)
 			elseif comp==0
-				place!(board,nu,hex)
+				place!(screen.board,nu,hex)
 			elseif isa(comp,Emitter) && (event.state&4 == 4) #ctrl
 				comp.pol=X*comp.pol
 			else
-				#lab=GtkLabel(string(hex))
-				#g[2,row]=lab
-				#reveal(g)
+				GAccessor.text(complab,"\n"*string(typeof(comp))*" at "*string(hex))
+				dirscombo=GtkComboBoxText()
+				staind=0;staindset=false
+				for c in keys(directions)
+					push!(dirscombo,c)
+					if !staindset && directions[c]==comp.dir
+						staindset=true
+					elseif !staindset
+						staind+=1
+					end
+				end
+				set_gtk_property!(dirscombo,:active,staind)
+				id = @guarded signal_connect(dirscombo,"changed") do widget, others...
+					comp.dir=directions[Gtk.bytestring(GAccessor.active_text(dirscombo))]
+					drawboard(screen)
+				end
+				g[2,row]=dirscombo
+				showall(screen.win)
 			end
 			drawboard(screen,ctx,w,h)
 			reveal(widget)
 		end
 	end
-	#placeseq!(board)	
 	show(screen.c)
 	return screen
 end
