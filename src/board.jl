@@ -3,6 +3,8 @@ import Base: getindex, setindex!
 
 abstract type Component end
 reset!(c::Component)=nothing
+getvar(c::Component)=0
+setvar!(c::Component,var)=nothing
 mutable struct Emitter<:Component
 	loc::Tuple{Int,Int,Int}
 	dir::Tuple{Int,Int,Int}
@@ -156,7 +158,7 @@ end
 
 mutable struct Gate<:Component
 	loc::Tuple{Int,Int,Int}
-	vars::Array{AbstractFloat}
+	vars::Array{Number}
 	photons::Array{Int}
 	makemat::Function
 	boardmods!::Function
@@ -169,6 +171,10 @@ function apply!(b::Board,gate::Gate)
 	m=gate.makemat(b.state,gate.photons,g.vars)
 	b.state.state=m*b.state.state
 	gate.boardmods!(b,gate.photons)
+end
+getvar(g::Gate)=g.vars[1]
+function setvar!(g::Gate,var::Number)
+	g.vars[1]=var
 end
 mutable struct Measure<:Component
 	loc::Tuple{Int,Int,Int}
@@ -188,19 +194,30 @@ function apply!(b::Board,measure::Measure)
 end
 mutable struct Mirror<:Component
 	loc::Tuple{Int,Int,Int}
-	orientation::Tuple{Int,Int,Int}
+	axis::Int
 	photons::Array{Int}
 	label::String
 end
-newMirror()=Mirror((0,0,0),(1,1,0),[],"")
+getvar(g::Mirror)=g.axis
+function setvar!(g::Mirror,var::Number)
+	g.axis=Int(round(var))
+end
+newMirror()=Mirror((0,0,0),1,[],"")
+function flippeddir(pdir,a)
+	dir=[pdir[1],-pdir[1]-pdir[2],pdir[2]]
+	#dir=-dir
+	am=(a+4)%3+1
+	ap=a%3+1
+	dir[am],dir[ap]=dir[ap],dir[am]
+	return dir
+end
 function apply!(b::Board,mirror::Mirror)
 	n=length(mirror.photons)
+	a=mirror.axis
 	for i in 1:n
 		p=b.photons[mirror.photons[i]]
-		ndir=[0,0,0]
-		ndir[1]=p.dir[2]*mirror.orientation[1]
-		ndir[2]=p.dir[1]*mirror.orientation[2]
-		p.dir=Tuple(ndir)
+		ndir=flippeddir(p.dir,a)
+		p.dir=(ndir[1],ndir[3],0)
 	end
 	mirror.photons=[]
 end

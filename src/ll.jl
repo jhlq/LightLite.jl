@@ -30,7 +30,7 @@ components["cnot"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int},vars::
 components["Measure"]=Measure((0,0,0),[],[],"∡")
 components["Emitter"]=newEmitter()
 components["Mirror"]=newMirror()
-components["rx"]=Gate((0,0,0),[1/4],[],(state::Photons,photons::Array{Int},vars::Array{AbstractFloat})->makemat(state.n,photons,rx(pi*vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rx")
-components["ry"]=Gate((0,0,0),[1/4],[],(state::Photons,photons::Array{Int},vars::Array{AbstractFloat})->makemat(state.n,photons,ry(pi*vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"ry")
-components["rz"]=Gate((0,0,0),[1/4],[],(state::Photons,photons::Array{Int},vars::Array{AbstractFloat})->makemat(state.n,photons,rz(pi*vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rz")
+components["rx"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{AbstractFloat})->makemat(state.n,photons,rx(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rx")
+components["ry"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{AbstractFloat})->makemat(state.n,photons,ry(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"ry")
+components["rz"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{AbstractFloat})->makemat(state.n,photons,rz(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rz")
 

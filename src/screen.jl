@@ -17,12 +17,13 @@ mutable struct Screen
 	window #initial aspect ratio, funnily named...
 	g #GtkGrid
 	gui::Dict #Gtk placeholder
+	selected
 end
 function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0,0,0), gridcolor=(1/2,1/2,1/2), grid=0, c=@GtkCanvas(), win=0, window=(900,700))
 	if board==0
 		board=newBoard()
 	end
-	screen=Screen(board,c,sizemod,size,offsetx,offsety,0,0,bgcolor,gridcolor,false,win,window,0,Dict())
+	screen=Screen(board,c,sizemod,size,offsetx,offsety,0,0,bgcolor,gridcolor,false,win,window,0,Dict(),(0,0,0))
 	if win==0
 		box=GtkBox(:h)
 		savebtn=GtkButton("Save")
@@ -121,6 +122,22 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		complab=GtkLabel("\nNothing selected.")
 		g[2,row]=complab
 		row+=1
+		dirscombo=GtkComboBoxText()
+		for c in keys(directions)
+			push!(dirscombo,c)
+		end
+		id = @guarded signal_connect(dirscombo,"changed") do widget, others...
+			screen.board[screen.selected...].dir=directions[Gtk.bytestring(GAccessor.active_text(dirscombo))]
+			drawboard(screen)
+		end
+		g[2,row]=dirscombo
+		spvar=GtkSpinButton(-1000:1000)
+		id = @guarded signal_connect(spvar, "value-changed") do widget
+			setvar!(screen.board[screen.selected...],Gtk.G_.value(widget))
+			drawboard(screen)
+		end
+		row+=1
+		g[2,row]=spvar
 		push!(box,screen.c)	
 		push!(box,g)
 		screen.g=g
@@ -135,6 +152,8 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		set_gtk_property!(box,:expand,screen.c,true)
 		screen.win=GtkWindow(box,"LightLite $(screen.board.name)",window[1],window[2])
 		showall(screen.win)
+		hide(dirscombo)
+		hide(spvar)
 		id = @guarded signal_connect(savebtn, "clicked") do widget
 			screen.board.name=nameentry.text[String]
 			save(screen.board)
@@ -225,24 +244,25 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			elseif isa(comp,Emitter) && (event.state&4 == 4) #ctrl
 				comp.pol=X*comp.pol
 			else
+				hide(dirscombo)
+				hide(spvar)
+				screen.selected=hex
 				GAccessor.text(complab,"\n"*string(typeof(comp))*" at "*string(hex))
-				dirscombo=GtkComboBoxText()
-				staind=0;staindset=false
-				for c in keys(directions)
-					push!(dirscombo,c)
-					if !staindset && directions[c]==comp.dir
-						staindset=true
-					elseif !staindset
-						staind+=1
+				if hasfield(typeof(comp),:dir)
+					staind=0
+					for c in keys(directions)
+						if directions[c]==comp.dir
+							break
+						else
+							staind+=1
+						end
 					end
+					set_gtk_property!(dirscombo,:active,staind)
+					show(dirscombo)
+				else
+					Gtk.G_.value(spvar,getvar(comp))
+					show(spvar)
 				end
-				set_gtk_property!(dirscombo,:active,staind)
-				id = @guarded signal_connect(dirscombo,"changed") do widget, others...
-					comp.dir=directions[Gtk.bytestring(GAccessor.active_text(dirscombo))]
-					drawboard(screen)
-				end
-				g[2,row]=dirscombo
-				showall(screen.win)
 			end
 			drawboard(screen,ctx,w,h)
 			reveal(widget)
@@ -301,6 +321,15 @@ function drawboard(screen,ctx,w,h)
 		loc=hex_to_pixel(comp.loc[1],comp.loc[2],size)
 		floc=(loc[1]+offset[1]+w/2,loc[2]+offset[2]+h/2)
 		rad=size*0.866/2
+		if isa(comp,Mirror)
+			set_source_rgb(ctx,0,0,1)
+			coor=[cos(-pi/6+(comp.axis-1)*pi/3),sin(-pi/6+(comp.axis-1)*pi/3)]
+			coor=3*rad.*coor
+			move_to(ctx,floc[1]+coor[1],floc[2]+coor[2])
+			rel_line_to(ctx,-2*coor[1],-2*coor[2])
+			stroke(ctx)
+			continue
+		end
 		#comp border:
 		set_source_rgb(ctx,screen.gridcolor...) 
 		arc(ctx, floc[1],floc[2],rad+1, 0, 2pi)
