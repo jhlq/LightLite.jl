@@ -168,11 +168,11 @@ function reset!(g::Gate)
 	g.photons=[]
 end
 function apply!(b::Board,gate::Gate)
-	m=gate.makemat(b.state,gate.photons,g.vars)
+	m=gate.makemat(b.state,gate.photons,gate.vars)
 	b.state.state=m*b.state.state
 	gate.boardmods!(b,gate.photons)
 end
-getvar(g::Gate)=g.vars[1]
+getvar(g::Gate,i::Int)=length(g.vars)>=i ? nothing : g.vars[1]
 function setvar!(g::Gate,var::Number)
 	g.vars[1]=var
 end
