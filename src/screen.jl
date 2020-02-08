@@ -162,9 +162,12 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			nboard=load(nameentry.text[String])
 			screen.board=nboard
 			drawboard(screen)
+			#@sigatom newScreen(nboard)
 		end
 		id = @guarded signal_connect(stepbtn, "clicked") do widget
 			step!(screen.board)
+			op=length(screen.board.output)>15 ? "..."*screen.board.output[end-12:end] : screen.board.output
+			GAccessor.text(newslabel,"Output: "*op)
 			drawboard(screen)
 		end
 		id = @guarded signal_connect(resetbtn, "clicked") do widget

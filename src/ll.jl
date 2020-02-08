@@ -22,15 +22,17 @@ function toffoli!(ps::Photons,cct::Array{Int})
 end
 
 components=Dict{String,Component}()
-components["X"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,X),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"X")
-components["Y"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,Y),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"Y")
-components["Z"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,Z),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"Z")
-components["H"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,H),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"H")
-components["cnot"]=Gate((0,0,0),[],[],(state::Photons,photons::Array{Int},vars::Array{Number})->length(photons)>1 ? cnot(state,photons) : 1,(b::Board,photons::Array{Int})->length(photons)>1 ? (b.photons[photons[1]].trapped=0;deleteat!(photons,1:length(photons))) : b.photons[photons[1]].trapped=9999,"⊕")
+components["X"]=Gate((0,0,0),[],X,"X","X")
+components["Y"]=Gate((0,0,0),[],Y,"Y","Y")
+components["Z"]=Gate((0,0,0),[],Z,"Z","Z")
+components["H"]=Gate((0,0,0),[],H,"H","H")
+components["CNOT"]=CNOT((0,0,0),[],"cx") #⊕
 components["Measure"]=Measure((0,0,0),[],[],"∡")
 components["Emitter"]=newEmitter()
 components["Mirror"]=newMirror()
-components["rx"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,rx(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rx")
+#=components["rx"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,rx(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rx")
 components["ry"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,ry(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"ry")
 components["rz"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,rz(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rz")
+=#
+gatefuns=Dict{String,Function}() #define apply! for CustomGates
 
