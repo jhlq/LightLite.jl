@@ -150,18 +150,23 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		screen.gui[:yadj]=yadj
 		screen.gui[:deletecheck]=deletecheck
 		set_gtk_property!(box,:expand,screen.c,true)
-		screen.win=GtkWindow(box,"LightLite $(screen.board.name)",window[1],window[2])
+		screen.win=GtkWindow(box,"LightLite",window[1],window[2])
 		showall(screen.win)
 		hide(dirscombo)
 		hide(spvar)
 		id = @guarded signal_connect(savebtn, "clicked") do widget
 			screen.board.name=nameentry.text[String]
 			save(screen.board)
+			screen.win.title[String]="LightLite $(screen.board.name)"
 		end
 		id = @guarded signal_connect(loadbtn, "clicked") do widget
 			nboard=load(nameentry.text[String])
+			if nboard==nothing
+				return
+			end
 			screen.board=nboard
 			drawboard(screen)
+			screen.win.title[String]="LightLite $(screen.board.name)"
 			#@sigatom newScreen(nboard)
 		end
 		id = @guarded signal_connect(stepbtn, "clicked") do widget
@@ -241,7 +246,7 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		if exists
 			comp=screen.board[hex...]
 			if screen.delete==true && comp!=0
-				remove!(board,hex)
+				remove!(screen.board,hex)
 			elseif comp==0
 				place!(screen.board,nu,hex)
 			elseif isa(comp,Emitter) && (event.state&4 == 4) #ctrl
@@ -263,8 +268,11 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 					set_gtk_property!(dirscombo,:active,staind)
 					show(dirscombo)
 				else
-					Gtk.G_.value(spvar,getvar(comp))
-					show(spvar)
+					vars=getvars(comp)
+					if length(vars)>0
+						Gtk.G_.value(spvar,vars[1])
+						show(spvar)
+					end
 				end
 			end
 			drawboard(screen,ctx,w,h)
@@ -327,7 +335,7 @@ function drawboard(screen,ctx,w,h)
 		if isa(comp,Mirror)
 			set_source_rgb(ctx,0,0,1)
 			coor=[cos(-pi/6+(comp.axis-1)*pi/3),sin(-pi/6+(comp.axis-1)*pi/3)]
-			coor=3*rad.*coor
+			coor=1.5*rad.*coor
 			move_to(ctx,floc[1]+coor[1],floc[2]+coor[2])
 			rel_line_to(ctx,-2*coor[1],-2*coor[2])
 			stroke(ctx)
@@ -370,8 +378,8 @@ function drawboard(screen,ctx,w,h)
 		end
 		loc=hex_to_pixel(p.loc[1],p.loc[2],size)
 		floc=(loc[1]+offset[1]+w/2,loc[2]+offset[2]+h/2)
-		rad=size*0.866/3*abs(p.amp)
-		set_source_rgba(ctx,1,1,1,0.5) 
+		rad=size*0.866/2*abs(p.amp)
+		set_source_rgba(ctx,1,1,1,0.7) 
 		arc(ctx, floc[1],floc[2],rad, 0, 2pi)
 		fill(ctx)
 	end

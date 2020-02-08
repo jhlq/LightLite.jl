@@ -31,3 +31,23 @@ place!(b,newMirror(),[1,0])
 step!(b,10)
 @test b.photons[1].dir!=(1,0,0)
 @test b.photons[1].loc[1]<0 || b.photons[1].loc[2]>0
+
+b=newBoard(examples["Bellstate"])
+run!(b)
+@test b.output=="11" || b.output=="00"
+d=run(b)
+@test isapprox(d["11"]+d["00"],1)
+
+b=newBoard(examples["and"])
+setinput!(b,"00")
+d=run(b)
+@test isapprox(d["0"],1)
+setinput!(b,"10")
+d=run(b)
+@test isapprox(d["0"],1)
+setinput!(b,"01")
+d=run(b)
+@test isapprox(d["0"],1)
+setinput!(b,"11")
+d=run(b)
+@test isapprox(d["1"],1)

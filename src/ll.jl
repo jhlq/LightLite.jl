@@ -30,9 +30,41 @@ components["CNOT"]=CNOT((0,0,0),[],"cx") #⊕
 components["Measure"]=Measure((0,0,0),[],[],"∡")
 components["Emitter"]=newEmitter()
 components["Mirror"]=newMirror()
-#=components["rx"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,rx(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rx")
-components["ry"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,ry(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"ry")
-components["rz"]=Gate((0,0,0),[4],[],(state::Photons,photons::Array{Int},vars::Array{Number})->makemat(state.n,photons,rz(pi/vars[1])),(b::Board,photons::Array{Int})->deleteat!(photons,1:length(photons)),"rz")
-=#
-gatefuns=Dict{String,Function}() #define apply! for CustomGates
+components["S"]=Gate((0,0,0),[],rz(pi/2),"S","S")
+components["S†"]=Gate((0,0,0),[],rz(-pi/2),"S†","S†")
+components["T"]=Gate((0,0,0),[],rz(pi/4),"T","T")
+components["T†"]=Gate((0,0,0),[],rz(-pi/4),"T†","T†")
+components["rx"]=CustomGate((0,0,0),[4],[],"rx","rx")
+components["ry"]=CustomGate((0,0,0),[4],[],"ry","ry")
+components["rz"]=CustomGate((0,0,0),[4],[],"rz","rz")
 
+gatefuns=Dict{String,Function}() #define apply! for CustomGates
+gatefuns["rx"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,rx(pi/getvar(r)))*b.state.state;r.photons=[];end
+gatefuns["ry"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,ry(pi/getvar(r)))*b.state.state;r.photons=[];end
+gatefuns["rz"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,rz(pi/getvar(r)))*b.state.state;r.photons=[];end
+
+examples=Dict{String,String}()
+examples["Bellstate"]="""Dict(:id=>"Emitter",:loc=>(-3, 0, 2),:dir=>(1, 0, 0),:pol=>[1, 0])
+Dict(:id=>"Measure",:loc=>(1, 0, 2))
+Dict(:id=>"CNOT",:loc=>(-1, 0, 2))
+Dict(:id=>"Emitter",:loc=>(-3, -1, 2),:dir=>(1, 0, 0),:pol=>[1, 0])
+Dict(:id=>"Measure",:loc=>(-1, 2, 2))
+Dict(:id=>"Mirror",:loc=>(-1, -1, 2),:vars=>[2])
+Dict(:id=>"H",:loc=>(-2, 0, 2))"""
+examples["and"]="""Dict(:id=>"Emitter",:loc=>(-4, -2, 2),:dir=>(1, 0, 0),:pol=>[0, 1])
+Dict(:id=>"Emitter",:loc=>(-5, -1, 2),:dir=>(1, 0, 0),:pol=>[0, 1])
+Dict(:id=>"Emitter",:loc=>(-6, 0, 2),:dir=>(1, 0, 0),:pol=>[1, 0])
+Dict(:id=>"ry",:loc=>(-5, 0, 2),:vars=>Number[-4.0])
+Dict(:id=>"Mirror",:loc=>(-3, -2, 2),:vars=>[2])
+Dict(:id=>"CNOT",:loc=>(-3, 0, 2))
+Dict(:id=>"ry",:loc=>(-2, 0, 2),:vars=>Number[4.0])
+Dict(:id=>"H",:loc=>(-1, 0, 2))
+Dict(:id=>"Mirror",:loc=>(0, -1, 2),:vars=>[2])
+Dict(:id=>"CNOT",:loc=>(0, 0, 2))
+Dict(:id=>"H",:loc=>(1, 0, 2))
+Dict(:id=>"ry",:loc=>(2, 0, 2),:vars=>Number[-4.0])
+Dict(:id=>"Mirror",:loc=>(-3, 1, 2),:vars=>[2])
+Dict(:id=>"Mirror",:loc=>(3, 0, 2),:vars=>[2])
+Dict(:id=>"CNOT",:loc=>(3, 1, 2))
+Dict(:id=>"ry",:loc=>(3, 2, 2),:vars=>Number[4])
+Dict(:id=>"Measure",:loc=>(3, 3, 2))"""

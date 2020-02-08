@@ -8,7 +8,7 @@ getvars(c::Component)=hasfield(typeof(c),:vars) ? c.vars : Number[]
 setvar!(c::Component,var::Number,i::Int=1)=(hasfield(typeof(c),:vars) && length(c.vars)>=i) ? c.vars[i]=var : nothing
 function setvars!(c::Component,vars::Array)
 	for vari in 1:length(vars)
-		setvar!(c,var,vari)
+		setvar!(c,vars[vari],vari)
 	end
 end
 id(c::Component)=hasfield(typeof(c),:id) ? c.id : string(typeof(c))
@@ -48,7 +48,7 @@ function makegrid(layers=3,startlocs=[(0,0,2)])
 	return grid
 end
 mutable struct Board
-	name
+	name::String
 	grid
 	shells::Int
 	map
@@ -58,6 +58,7 @@ mutable struct Board
 	state::Photons
 	components::Array{Component}
 	output::String
+	maxsteps::Int
 end
 function newBoard(shells=6,initlocs=[(0,0,2)],grid=0,map=Dict())
 	if grid==0
@@ -66,13 +67,25 @@ function newBoard(shells=6,initlocs=[(0,0,2)],grid=0,map=Dict())
 	for loc in grid
 		map[loc]=0
 	end
-	board=Board("circuit",grid,shells,map,[],false,[],photons(0),[],"")
+	board=Board("circuit.ll",grid,shells,map,[],false,[],photons(0),[],"",1000)
 	return board
 end
 getindex(b::Board,x::Int,y::Int,z::Int)=haskey(b.map,(x,y,z)) ? b.map[(x,y,z)] : nothing
 getindex(b::Board,x::Int,y::Int)=getindex(b,x,y,2)
 setindex!(b::Board,c::Component,x::Int,y::Int,z::Int)=b.map[(x,y,z)]=c
 setindex!(b::Board,c::Component,x::Int,y::Int)=setindex!(b,c,x,y,2)
+function setinput!(b::Board,str::String)
+	for i in 1:length(b.emitters)
+		if i>length(str)
+			return
+		end
+		if str[i]=='1'
+			b.emitters[i]=[0,1]
+		elseif str[i]=='0'
+			b.emitters[i]=[1,0]
+		end
+	end
+end
 function place!(b::Board,c::Component,loc::Tuple,replace::Bool=false)
 	if length(loc)!=3
 		error("Tuple "*string(loc)*" needs to contain 3 elements.")
@@ -103,7 +116,7 @@ end
 function step!(b::Board,steps::Int=1)
 	if !b.emitted
 		for em in b.emitters
-			push!(b.photons,Photon(em.pol,em.loc,em.dir,0,1,0))
+			push!(b.photons,Photon(em.pol,em.loc,em.dir,0,0.2,0))
 		end
 		b.state=photons(b.photons)
 		b.emitted=true
@@ -140,6 +153,39 @@ function reset!(b::Board)
 	b.emitted=false
 	b.state=photons(0)
 	b.output=""
+end
+run!(b::Board)=step!(b,b.maxsteps)
+function run(b::Board,shots::Int=100)
+	bc=deepcopy(b)
+	reset!(bc)
+	run!(bc)
+	bco=bc.output
+	if bco==""
+		return p(bc.state)
+	end
+	d=Dict{String,AbstractFloat}()
+	d[bco]=1
+	ol=length(bco)
+	for shot in 1:shots-1
+		reset!(bc)
+		for step in 1:bc.maxsteps
+			step!(bc)
+			bco=bc.output
+			if length(bco)>=ol
+				if haskey(d,bco)
+					d[bco]+=1
+				else
+					d[bco]=1
+				end
+				break
+			end
+		end
+	end
+	for key in keys(d)
+		d[key]=d[key]/shots
+	end
+	d["shots"]=shots
+	return d
 end
 function remove!(b::Board,loc)
 	if length(loc)==2
@@ -180,17 +226,15 @@ function apply!(b::Board,gate::Gate)
 	b.state.state=m*b.state.state
 	gate.photons=[]
 end
-#=getvar(g::Gate,i::Int)=length(g.vars)>=i ? nothing : g.vars[1]
-function setvar!(g::Gate,var::Number,i::Int=1)
-	g.vars[i]=var
-end=#
 mutable struct CNOT<:Component
 	loc::Tuple{Int,Int,Int}
 	photons::Array{Int}
 	label::String
 end
 function apply!(b::Board,c::CNOT)
-	if length(c.photons)>1
+	if length(c.photons)==0
+		return
+	elseif length(c.photons)>1
 		b.state.state=cnot(b.state,c.photons)*b.state.state
 		b.photons[c.photons[1]].trapped=0
 		c.photons=[]
@@ -204,6 +248,9 @@ mutable struct CustomGate<:Component
 	photons::Array{Int}
 	id::String
 	label::String
+end
+function apply!(b::Board,gate::CustomGate)
+	gatefuns[gate.id](b,gate)
 end
 mutable struct Measure<:Component
 	loc::Tuple{Int,Int,Int}
@@ -229,6 +276,7 @@ mutable struct Mirror<:Component
 	photons::Array{Int}
 	label::String
 end
+getvar(m::Mirror,i::Int=1)=i==1 ? m.axis : nothing
 getvars(g::Mirror)=[g.axis]
 function setvar!(g::Mirror,var::Number,i::Int=1)
 	g.axis=Int(round(var))
@@ -282,9 +330,7 @@ function save(b::Board)
 	end
 	println("Saved "*string(length(b.components))*" components at "*dir)
 end
-function load!(board::Board,name::String,absolute::Bool=false,offset::Tuple{Int,Int,Int}=(0,0,0))
-	dir=absolute ? name : joinpath(homedir(),".lightlite","circuits",name)
-	stra=readlines(dir)
+function place!(board::Board,stra::Array{String})
 	for str in stra
 		if length(str)==0 || str[1]=='#'
 			continue
@@ -300,6 +346,25 @@ function load!(board::Board,name::String,absolute::Bool=false,offset::Tuple{Int,
 			end
 		end
 	end
+end
+function load!(board::Board,name::String,absolute::Bool=false,offset::Tuple{Int,Int,Int}=(0,0,0))
+	dir=absolute ? name : joinpath(homedir(),".lightlite","circuits",name)
+	if !isfile(dir)
+		println("File $dir not found.")
+		return
+	end
+	stra=readlines(dir)
+	place!(board,stra)
 	return board
 end
 load(name::String,absolute::Bool=false)=load!(newBoard(),name,absolute)
+function newBoard(str::String)
+	b=newBoard()
+	strs=split(str,'\n')
+	stra=String[]
+	for st in strs
+		push!(stra,string(st))
+	end
+	place!(b,stra)
+	return b
+end
