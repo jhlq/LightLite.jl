@@ -37,11 +37,13 @@ components["T†"]=Gate((0,0,0),[],rz(-pi/4),"T†","T†")
 components["rx"]=CustomGate((0,0,0),[4],[],"rx","rx")
 components["ry"]=CustomGate((0,0,0),[4],[],"ry","ry")
 components["rz"]=CustomGate((0,0,0),[4],[],"rz","rz")
+components["Toffoli"]=CustomGate((0,0,0),[],[],"Toffoli","ccx")
 
 gatefuns=Dict{String,Function}() #define apply! for CustomGates
 gatefuns["rx"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,rx(pi/getvar(r)))*b.state.state;r.photons=[];end
 gatefuns["ry"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,ry(pi/getvar(r)))*b.state.state;r.photons=[];end
 gatefuns["rz"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,rz(pi/getvar(r)))*b.state.state;r.photons=[];end
+gatefuns["Toffoli"]=(b::Board,r::CustomGate)->begin;if length(r.photons)>2;apply!(b.state,r.photons,toffoli!);trap!(b,r.photons,0);r.photons=[];else;trap!(b,r.photons);end;end
 
 examples=Dict{String,String}()
 examples["Bellstate"]="""Dict(:id=>"Emitter",:loc=>(-3, 0, 2),:dir=>(1, 0, 0),:pol=>[1, 0])
@@ -68,3 +70,38 @@ Dict(:id=>"Mirror",:loc=>(3, 0, 2),:vars=>[2])
 Dict(:id=>"CNOT",:loc=>(3, 1, 2))
 Dict(:id=>"ry",:loc=>(3, 2, 2),:vars=>Number[4])
 Dict(:id=>"Measure",:loc=>(3, 3, 2))"""
+examples["ccxs"]="""Dict(:id=>"Emitter",:loc=>(-6, 0, 2),:dir=>(1, 0, 0),:pol=>[1, 0])
+Dict(:id=>"Emitter",:loc=>(-4, -1, 2),:dir=>(0, 1, 0),:pol=>[0, 1])
+Dict(:id=>"Emitter",:loc=>(-5, 1, 2),:dir=>(1, -1, 0),:pol=>[0, 1])
+Dict(:id=>"Measure",:loc=>(-3, 0, 2))
+Dict(:id=>"Toffoli",:loc=>(-4, 0, 2))
+Dict(:id=>"Mirror",:loc=>(-3, -1, 2),:vars=>[1])
+Dict(:id=>"Mirror",:loc=>(-4, 1, 2),:vars=>[0])
+Dict(:id=>"Mirror",:loc=>(-6, 3, 2),:vars=>[3])
+Dict(:id=>"Mirror",:loc=>(-6, 5, 2),:vars=>[2])
+Dict(:id=>"Mirror",:loc=>(-5, 5, 2),:vars=>[1])
+Dict(:id=>"Mirror",:loc=>(-2, 2, 2),:vars=>[0])
+Dict(:id=>"Mirror",:loc=>(-2, 1, 2),:vars=>[0])
+Dict(:id=>"Mirror",:loc=>(-1, -1, 2),:vars=>[2])
+Dict(:id=>"Toffoli",:loc=>(-1, 0, 2))
+Dict(:id=>"Measure",:loc=>(0, -1, 2))
+Dict(:id=>"Mirror",:loc=>(-1, 1, 2),:vars=>[2])
+Dict(:id=>"Mirror",:loc=>(1, 1, 2),:vars=>[1])
+Dict(:id=>"Mirror",:loc=>(1, 0, 2),:vars=>[1])
+Dict(:id=>"Mirror",:loc=>(2, -3, 2),:vars=>[1])
+Dict(:id=>"Mirror",:loc=>(4, -2, 2),:vars=>[0])
+Dict(:id=>"Toffoli",:loc=>(4, -3, 2))
+Dict(:id=>"Measure",:loc=>(4, -5, 2))"""
+function example(name::String="")
+	if !haskey(examples,name)
+		println("Available examples:")
+		for key in keys(examples)
+			println('"'*key*'"')
+		end
+		if name==""
+			println("Open one like so: screen=example(\"Bellstate\");")
+		end
+	else
+		return newScreen(newBoard(examples[name]))
+	end
+end

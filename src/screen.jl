@@ -292,11 +292,15 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 				place!(screen.board,nu,hex)
 			elseif screen.delete==true && comp!=0
 				remove!(screen.board,hex)
+				hide(dirscombo)
+				hide(spvar)
+				screen.selected=(0,0,0)
+				GAccessor.text(complab,"")
 			else
 				hide(dirscombo)
 				hide(spvar)
 				screen.selected=hex
-				GAccessor.text(complab,"\n"*string(typeof(comp))*" at "*string(hex))
+				GAccessor.text(complab,"\n"*id(comp)*" at "*string(hex))
 				if hasfield(typeof(comp),:dir)
 					staind=0
 					for c in keys(directions)

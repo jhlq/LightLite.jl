@@ -11,7 +11,7 @@ function setvars!(c::Component,vars::Array)
 		setvar!(c,vars[vari],vari)
 	end
 end
-id(c::Component)=hasfield(typeof(c),:id) ? c.id : string(typeof(c))
+id(c::Component)=hasfield(typeof(c),:id) ? c.id : string(split(string(typeof(c)),'.')[end])
 mutable struct Emitter<:Component
 	loc::Tuple{Int,Int,Int}
 	dir::Tuple{Int,Int,Int}
@@ -238,6 +238,11 @@ function apply!(b::Board,c::CNOT)
 		c.photons=[]
 	else
 		 b.photons[c.photons[1]].trapped=1073741824
+	end
+end
+function trap!(b::Board,pinds::Array{Int},duration=1073741824)
+	for pind in pinds
+		b.photons[pind].trapped=duration
 	end
 end
 mutable struct CustomGate<:Component

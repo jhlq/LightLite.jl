@@ -51,3 +51,7 @@ d=run(b)
 setinput!(b,"11")
 d=run(b)
 @test isapprox(d["1"],1)
+
+b=newBoard(examples["ccxs"])
+run!(b)
+@test b.output=="101"
