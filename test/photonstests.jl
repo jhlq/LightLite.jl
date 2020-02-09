@@ -30,8 +30,8 @@ apply!(ps,[2,1],cnot)
 ps=photons(3)
 apply!(ps,[1,2,3],[H,H,H])
 pr=p(ps)
-@test isapprox(pr[1],1/(2^3))
-@test isapprox(sum(pr),1)
+@test isapprox(pr["100"],1/(2^3))
+@test isapprox(pr["tot"],1)
 @test length(states(ps,"*1*"))==4
 @test length(states(ps,"*01"))==2
 result=measure!(ps,1)
@@ -69,14 +69,14 @@ end
 @test isapprox(p(andgate(1,1),"**1")["tot"],1)
 
 ps=photons("100")
-apply!(ps,[1,2,3],toffoli)
-@test isapprox(ps(ps,"**0")["tot"],1)
+apply!(ps,[1,2,3],toffoli!)
+@test isapprox(p(ps,"**0")["tot"],1)
 ps=photons("010")
-apply!(ps,[1,2,3],toffoli)
-@test isapprox(ps(ps,"**0")["tot"],1)
+apply!(ps,[1,2,3],toffoli!)
+@test isapprox(p(ps,"**0")["tot"],1)
 ps=photons("110")
-apply!(ps,[1,2,3],toffoli)
-@test isapprox(ps(ps,"**1")["tot"],1)
+apply!(ps,[1,2,3],toffoli!)
+@test isapprox(p(ps,"**1")["tot"],1)
 
 function halfadder(b1,b2)
 	ps=photons(4)
@@ -88,18 +88,19 @@ function halfadder(b1,b2)
 	end
 	apply!(ps,[1,3],cnot)
 	apply!(ps,[2,3],cnot)
-	apply!(ps,[1,2,4],toffoli)
+	apply!(ps,[1,2,4],toffoli!)
 	return ps
 end
 @test isapprox(p(halfadder(0,0),"**00")["tot"],1)
-@test isapprox(p(halfadder(0,1),"**01")["tot"],1)
-@test isapprox(p(halfadder(1,0),"**01")["tot"],1)
-@test isapprox(p(halfadder(1,1),"**10")["tot"],1)
+@test isapprox(p(halfadder(0,1),"**10")["tot"],1)
+@test isapprox(p(halfadder(1,0),"**10")["tot"],1)
+@test isapprox(p(halfadder(1,1),"**01")["tot"],1)
 
+S=rz(pi/2)
 ps=photons(2);apply!(ps,1,X);apply!(ps,1,S);apply!(ps,1,X)
-@test isapprox(ps.state[1],1im)
+@test isapprox(imag(ps.state[1]),1)
 ps=photons(2);apply!(ps,[1,2],[X,X]);apply!(ps,[1,2],[S,S]);apply!(ps,[1,2],[X,X])
-@test isapprox(ps.state[1],-1)
+@test isapprox(real(ps.state[1]),-1)
 
 #https://qiskit.org/textbook/ch-states/unique-properties-qubits.html
 ps=photons(1);apply!(ps,1,ry(-pi/4));pr=p(ps) #Z measure

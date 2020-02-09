@@ -1,5 +1,5 @@
 include("photons.jl")
-import Base: getindex, setindex!
+import Base: getindex, setindex!, run
 
 abstract type Component end
 reset!(c::Component)=nothing
@@ -80,9 +80,9 @@ function setinput!(b::Board,str::String)
 			return
 		end
 		if str[i]=='1'
-			b.emitters[i]=[0,1]
+			b.emitters[i].pol=[0,1]
 		elseif str[i]=='0'
-			b.emitters[i]=[1,0]
+			b.emitters[i].pol=[1,0]
 		end
 	end
 end

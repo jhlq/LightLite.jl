@@ -1,11 +1,11 @@
-g=makegrid(1)
+g=LightLite.makegrid(1)
 @test length(g)==13
 
 b=newBoard()
 l=b[0,0]
-@test l==nothing
-place!(b,newEmitter(),[0,0])
-@test isa(b[0,0],Emitter)
+@test l==nothing || l==0
+place!(b,components["Emitter"],[0,0])
+@test isa(b[0,0],LightLite.Emitter)
 @test b.emitted==false
 @test length(b.photons)==0
 step!(b)
@@ -14,23 +14,23 @@ step!(b)
 @test b.photons[1].loc==b.emitters[1].loc.+b.emitters[1].dir
 step!(b)
 @test b.photons[1].loc==b.emitters[1].loc.+b.emitters[1].dir.*2
-@test b.photons[1].amp==0
 step!(b);step!(b);step!(b)
-@test b.photons[1].amp==1
+@test b.photons[1].loc==b.emitters[1].loc.+b.emitters[1].dir.*5
+@test isapprox(p(b.state,"0"),1)
 reset!(b)
 @test b.emitted==false
 @test length(b.photons)==0
-place!(b,gates["X"],[0,1])
+place!(b,components["X"],[0,1])
 b.emitters[1].dir=(0,1,0)
 step!(b)
 @test p(b.state,"1")==1
 
 b=newBoard()
-place!(b,newEmitter(),[0,0])
-place!(b,newMirror(),[1,0])
+place!(b,components["Emitter"],[0,0])
+place!(b,components["Mirror"],[1,0])
 step!(b,10)
 @test b.photons[1].dir!=(1,0,0)
-@test b.photons[1].loc[1]<0 || b.photons[1].loc[2]>0
+@test b.photons[1].loc[2]!=0 || b.photons[1].loc[1]<0
 
 b=newBoard(examples["Bellstate"])
 run!(b)
