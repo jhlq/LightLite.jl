@@ -17,23 +17,30 @@ mutable struct Screen
 	window #initial aspect ratio, funnily named...
 	g #GtkGrid
 	gui::Dict #Gtk placeholder
-	selected
+	selected::Tuple{Int,Int,Int}
+	running::Bool
+	fps::Number
 end
 function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0,0,0), gridcolor=(1/2,1/2,1/2), grid=0, c=@GtkCanvas(), win=0, window=(900,700))
 	if board==0
 		board=newBoard()
 	end
-	screen=Screen(board,c,sizemod,size,offsetx,offsety,0,0,bgcolor,gridcolor,false,win,window,0,Dict(),(0,0,0))
+	screen=Screen(board,c,sizemod,size,offsetx,offsety,0,0,bgcolor,gridcolor,false,win,window,0,Dict(),(0,0,0),false,5)
 	if win==0
 		box=GtkBox(:h)
 		savebtn=GtkButton("Save")
 		nameentry=GtkEntry()
 		loadbtn=GtkButton("Load")
+		set_gtk_property!(nameentry,:text,screen.board.name)
+		outputlabel=GtkLabel("")
 		stepbtn=GtkButton("Step")
 		resetbtn=GtkButton("Reset")
-		set_gtk_property!(nameentry,:text,screen.board.name)
-		scorelabel=GtkLabel("")
-		newslabel=GtkLabel("")
+		runbtn=GtkButton("Run")
+		spsteps=GtkSpinButton(1:1000000)
+		Gtk.G_.value(spsteps,screen.board.maxsteps)
+		run2btn=GtkButton("Run")
+		spshots=GtkSpinButton(1:1000000)
+		Gtk.G_.value(spshots,100)
 		scalemaxfac=30
 		zoomscale = GtkScale(false, 1:scalemaxfac*10)
 		zlabel=GtkLabel("Zoom")
@@ -82,11 +89,18 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		g[2,row]=nameentry
 		g[3,row]=loadbtn
 		row+=1
-		g[1,row]=scorelabel
-		g[2,row]=newslabel
+		g[2,row]=outputlabel
 		row+=1
 		g[2,row]=stepbtn
 		g[3,row]=resetbtn
+		row+=1
+		g[1,row]=runbtn
+		g[2,row]=spsteps
+		g[3,row]=GtkLabel("steps")
+		row+=1
+		g[1,row]=run2btn
+		g[2,row]=spshots
+		g[3,row]=GtkLabel("times")
 		row+=1
 		g[1,row]=clabel1
 		g[3,row]=clabel2
@@ -141,8 +155,7 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		push!(box,screen.c)	
 		push!(box,g)
 		screen.g=g
-		screen.gui[:scorelabel]=scorelabel
-		screen.gui[:newslabel]=newslabel
+		screen.gui[:outputlabel]=outputlabel
 		screen.gui[:yoscale]=yoscale
 		screen.gui[:xoscale]=xoscale
 		screen.gui[:zadj]=zadj
@@ -167,17 +180,45 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			screen.board=nboard
 			drawboard(screen)
 			screen.win.title[String]="LightLite $(screen.board.name)"
-			#@sigatom newScreen(nboard)
 		end
 		id = @guarded signal_connect(stepbtn, "clicked") do widget
+			screen.running=false
 			step!(screen.board)
-			op=length(screen.board.output)>15 ? "..."*screen.board.output[end-12:end] : screen.board.output
-			GAccessor.text(newslabel,"Output: "*op)
 			drawboard(screen)
 		end
 		id = @guarded signal_connect(resetbtn, "clicked") do widget
-			reset!(screen.board)
+			reset!(screen)
 			drawboard(screen)
+		end
+		id = @guarded signal_connect(runbtn, "clicked") do widget
+			screen.board.maxsteps=spsteps.value[Int]
+			reset!(screen)
+			@async run!(screen)
+		end
+		id = @guarded signal_connect(spsteps, "value-changed") do widget
+			screen.board.maxsteps=spsteps.value[Int]
+		end
+		id = @guarded signal_connect(run2btn, "clicked") do widget
+			shots=spshots.value[Int]
+			d=run(screen.board,shots)
+			println(d)
+			str="\n"
+			if !haskey(d,"shots")
+				str*="No measures detected after $(screen.board.maxsteps) steps. Probabilities determined with one run.\n"
+			else
+				str*="Ran $shots times with steplimit $(screen.board.maxsteps).\n"
+			end
+			stra=String[]
+			for k in keys(d)
+				if k!="shots" && k!="tot" && d[k]!=0
+					push!(stra,k*": $(d[k])\n")
+				end
+			end
+			sort!(stra)
+			for st in stra
+				str*=st
+			end
+			info_dialog(str,screen.win)
 		end
 		id = @guarded signal_connect(zoomscale, "value-changed") do widget
 			wval=Gtk.G_.value(widget)
@@ -245,12 +286,12 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		exists=in(hex,keys(screen.board.map))
 		if exists
 			comp=screen.board[hex...]
-			if screen.delete==true && comp!=0
-				remove!(screen.board,hex)
+			if isa(comp,Emitter) && (event.state&4 == 4) #ctrl
+				comp.pol=X*comp.pol
 			elseif comp==0
 				place!(screen.board,nu,hex)
-			elseif isa(comp,Emitter) && (event.state&4 == 4) #ctrl
-				comp.pol=X*comp.pol
+			elseif screen.delete==true && comp!=0
+				remove!(screen.board,hex)
 			else
 				hide(dirscombo)
 				hide(spvar)
@@ -362,10 +403,17 @@ function drawboard(screen,ctx,w,h)
 		end
 		arc(ctx,floc[1],floc[2],rad, 0, 2pi)
 		fill(ctx)
+		if hasfield(typeof(comp),:dir)
+			pixdir=hex_to_pixel(comp.dir[1],comp.dir[2],rad)
+			move_to(ctx,floc[1],floc[2])
+			rel_line_to(ctx,pixdir[1],pixdir[2])
+			stroke(ctx)
+		end
 		set_source_rgb(ctx,0,0,0) 
 		select_font_face(ctx, "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_BOLD);
-		set_font_size(ctx, 2*rad);
-		move_to(ctx, floc[1]-rad/1.5, floc[2]+rad/2);
+		lablen=length(comp.label)
+		set_font_size(ctx, rad+rad/lablen);
+		move_to(ctx, floc[1]-rad+rad/(lablen*2), floc[2]+rad/2);
 		show_text(ctx, comp.label);
 		stroke(ctx);
 	end
@@ -383,6 +431,8 @@ function drawboard(screen,ctx,w,h)
 		arc(ctx, floc[1],floc[2],rad, 0, 2pi)
 		fill(ctx)
 	end
+	op=length(screen.board.output)>15 ? "..."*screen.board.output[end-13:end] : screen.board.output
+	GAccessor.text(screen.gui[:outputlabel],"Output: "*op)
 	#showall(screen.win) #should probably look up the difference between all these revealing methods
 	reveal(screen.c)
 end
@@ -391,6 +441,37 @@ function drawboard(screen::Screen)
 	h=height(screen.c)
 	w=width(screen.c)
 	drawboard(screen,ctx,w,h)
+end
+function run!(screen::Screen,steps::Int)
+	if !screen.running
+		return
+	elseif steps<1
+		screen.running=false
+		return
+	end
+	t0=time()
+	step!(screen.board)
+	steps-=1
+	drawboard(screen)
+	tt=1/screen.fps
+	t=time()-t0
+	rt=tt-t
+	if rt>0
+		sleep(rt)
+	end
+	run!(screen,steps)
+end
+function run!(screen::Screen)
+	if screen.running
+		println("Already running.")
+		return
+	end
+	screen.running=true
+	run!(screen,screen.board.maxsteps)
+end
+function reset!(screen::Screen)
+	screen.running=false
+	reset!(screen.board)
 end
 function zoom!(screen,factor)
 	screen.sizemod*=factor

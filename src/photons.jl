@@ -33,12 +33,16 @@ function photons(n::Int)
 	end
 	s=zeros(Complex{AbstractFloat},2^n)
 	s[1]=1
+	l=bitstates(n)
+	ps=Photons(n,s,l)
+	return ps
+end
+function bitstates(n::Int)
 	l=["0","1"]
 	for i in 2:n
 		l=kron(l,["0","1"])
 	end
-	ps=Photons(n,s,l)
-	return ps
+	return l
 end
 function photons(bits::String)
 	ap=Array[]

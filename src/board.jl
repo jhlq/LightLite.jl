@@ -67,7 +67,7 @@ function newBoard(shells=6,initlocs=[(0,0,2)],grid=0,map=Dict())
 	for loc in grid
 		map[loc]=0
 	end
-	board=Board("circuit.ll",grid,shells,map,[],false,[],photons(0),[],"",1000)
+	board=Board("circuit.ll",grid,shells,map,[],false,[],photons(0),[],"",100)
 	return board
 end
 getindex(b::Board,x::Int,y::Int,z::Int)=haskey(b.map,(x,y,z)) ? b.map[(x,y,z)] : nothing
@@ -86,10 +86,7 @@ function setinput!(b::Board,str::String)
 		end
 	end
 end
-function place!(b::Board,c::Component,loc::Tuple,replace::Bool=false)
-	if length(loc)!=3
-		error("Tuple "*string(loc)*" needs to contain 3 elements.")
-	end
+function place!(b::Board,c::Component,loc::Tuple{Int,Int,Int},replace::Bool=false)
 	if isa(b[loc...],Component)
 		if replace
 			remove!(b,loc)
@@ -102,6 +99,7 @@ function place!(b::Board,c::Component,loc::Tuple,replace::Bool=false)
 	c.loc=loc
 	b[loc...]=c
 	if isa(c,Emitter)
+		reset!(b)
 		push!(b.emitters,c)
 	end
 	push!(b.components,c)
