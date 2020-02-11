@@ -3,15 +3,15 @@ import Base: getindex, setindex!, run
 
 abstract type Component end
 reset!(c::Component)=nothing
-getvar(c::Component,i::Int=1)=(hasfield(typeof(c),:vars) && length(c.vars)>=i) ? c.vars[i] : nothing
-getvars(c::Component)=hasfield(typeof(c),:vars) ? c.vars : Number[]
-setvar!(c::Component,var::Number,i::Int=1)=(hasfield(typeof(c),:vars) && length(c.vars)>=i) ? c.vars[i]=var : nothing
+getvar(c::Component,i::Int=1)=(:vars in fieldnames(typeof(c)) && length(c.vars)>=i) ? c.vars[i] : nothing
+getvars(c::Component)=:vars in fieldnames(typeof(c)) ? c.vars : Number[]
+setvar!(c::Component,var::Number,i::Int=1)=(:vars in fieldnames(typeof(c)) && length(c.vars)>=i) ? c.vars[i]=var : nothing
 function setvars!(c::Component,vars::Array)
 	for vari in 1:length(vars)
 		setvar!(c,vars[vari],vari)
 	end
 end
-id(c::Component)=hasfield(typeof(c),:id) ? c.id : string(split(string(typeof(c)),'.')[end])
+id(c::Component)=:id in fieldnames(typeof(c)) ? c.id : string(split(string(typeof(c)),'.')[end])
 mutable struct Emitter<:Component
 	loc::Tuple{Int,Int,Int}
 	dir::Tuple{Int,Int,Int}
@@ -133,7 +133,7 @@ function step!(b::Board,steps::Int=1)
 				p.der=-p.der
 			end
 			c=b[p.loc...]
-			if isa(c,Component) && hasfield(typeof(c),:photons)
+			if isa(c,Component) && :photons in fieldnames(typeof(c))
 				push!(c.photons,pind)
 				push!(cs,c)
 			end
@@ -315,10 +315,10 @@ function save(b::Board)
 	str=""
 	for c in b.components
 		str*="Dict(:id=>\""*id(c)*"\",:loc=>"*string(c.loc)
-		if hasfield(typeof(c),:dir)
+		if :dir in fieldnames(typeof(c))
 			str*=",:dir=>"*string(c.dir)
 		end
-		if hasfield(typeof(c),:pol)
+		if :pol in fieldnames(typeof(c))
 			str*=",:pol=>"*string(c.pol)
 		end
 		v=getvars(c)

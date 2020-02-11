@@ -86,7 +86,7 @@ function makemat(n::Int,ia::Array{Int},gates::Array)
 	end
 	mc=Matrix[]
 	for i in 1:n
-		push!(mc,I(2))
+		push!(mc,[1 0;0 1])
 	end
 	for iai in 1:length(ia)
 		mc[ia[iai]]=gates[iai]

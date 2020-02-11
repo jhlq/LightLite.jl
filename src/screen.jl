@@ -301,7 +301,7 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 				hide(spvar)
 				screen.selected=hex
 				GAccessor.text(complab,"\n"*id(comp)*" at "*string(hex))
-				if hasfield(typeof(comp),:dir)
+				if :dir in fieldnames(typeof(comp))
 					staind=0
 					for c in keys(directions)
 						if directions[c]==comp.dir
@@ -407,7 +407,7 @@ function drawboard(screen,ctx,w,h)
 		end
 		arc(ctx,floc[1],floc[2],rad, 0, 2pi)
 		fill(ctx)
-		if hasfield(typeof(comp),:dir)
+		if :dir in fieldnames(typeof(comp))
 			pixdir=hex_to_pixel(comp.dir[1],comp.dir[2],rad)
 			move_to(ctx,floc[1],floc[2])
 			rel_line_to(ctx,pixdir[1],pixdir[2])
