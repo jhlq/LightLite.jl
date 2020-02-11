@@ -12,3 +12,10 @@ notifications:
 matrix:
   allow_failures:
   - julia: nightly
+
+addons:
+  apt:
+    packages:
+      - xvfb
+script:
+  - if [[ `uname` = "Linux" ]]; then TESTCMD="xvfb-run julia"; else TESTCMD="julia"; fi

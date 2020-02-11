@@ -87,13 +87,16 @@ function setinput!(b::Board,str::String)
 	end
 end
 function place!(b::Board,c::Component,loc::Tuple{Int,Int,Int},replace::Bool=false)
-	if isa(b[loc...],Component)
+	bloc=b[loc...]
+	if isa(bloc,Component)
 		if replace
 			remove!(b,loc)
 		else
 			println(loc," is occupied.")
 			return
 		end
+	elseif bloc==nothing
+		push!(b.grid,loc)
 	end
 	c=deepcopy(c)
 	c.loc=loc
@@ -152,7 +155,10 @@ function reset!(b::Board)
 	b.state=photons(0)
 	b.output=""
 end
-run!(b::Board)=step!(b,b.maxsteps)
+function run!(b::Board)
+	reset!(b)
+	step!(b,b.maxsteps)
+end
 function run(b::Board,shots::Int=100)
 	bc=deepcopy(b)
 	reset!(bc)
@@ -289,6 +295,12 @@ function flippeddir(pdir,a)
 	dir=[pdir[1],-pdir[1]-pdir[2],pdir[2]]
 	am=(a+4)%3+1
 	ap=a%3+1
+	if am<1
+		am=3-am
+	end
+	if ap<1
+		ap=3-ap
+	end
 	dir[am],dir[ap]=dir[ap],dir[am]
 	return (dir[1],dir[3],0)
 end
@@ -360,7 +372,13 @@ function load!(board::Board,name::String,absolute::Bool=false,offset::Tuple{Int,
 	place!(board,stra)
 	return board
 end
-load(name::String,absolute::Bool=false)=load!(newBoard(),name,absolute)
+function load(name::String,absolute::Bool=false)
+	b=load!(newBoard(),name,absolute)
+	if !absolute
+		b.name=name
+	end
+	return b
+end
 function newBoard(str::String)
 	b=newBoard()
 	strs=split(str,'\n')

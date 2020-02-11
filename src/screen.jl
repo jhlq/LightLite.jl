@@ -140,13 +140,13 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		for c in keys(directions)
 			push!(dirscombo,c)
 		end
-		id = @guarded signal_connect(dirscombo,"changed") do widget, others...
+		@guarded signal_connect(dirscombo,"changed") do widget, others...
 			screen.board[screen.selected...].dir=directions[Gtk.bytestring(GAccessor.active_text(dirscombo))]
 			drawboard(screen)
 		end
 		g[2,row]=dirscombo
 		spvar=GtkSpinButton(-1000:1000)
-		id = @guarded signal_connect(spvar, "value-changed") do widget
+		@guarded signal_connect(spvar, "value-changed") do widget
 			setvar!(screen.board[screen.selected...],Gtk.G_.value(widget))
 			drawboard(screen)
 		end
@@ -167,12 +167,12 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		showall(screen.win)
 		hide(dirscombo)
 		hide(spvar)
-		id = @guarded signal_connect(savebtn, "clicked") do widget
+		@guarded signal_connect(savebtn, "clicked") do widget
 			screen.board.name=nameentry.text[String]
 			save(screen.board)
 			screen.win.title[String]="LightLite $(screen.board.name)"
 		end
-		id = @guarded signal_connect(loadbtn, "clicked") do widget
+		@guarded signal_connect(loadbtn, "clicked") do widget
 			nboard=load(nameentry.text[String])
 			if nboard==nothing
 				return
@@ -181,24 +181,24 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			drawboard(screen)
 			screen.win.title[String]="LightLite $(screen.board.name)"
 		end
-		id = @guarded signal_connect(stepbtn, "clicked") do widget
+		@guarded signal_connect(stepbtn, "clicked") do widget
 			screen.running=false
 			step!(screen.board)
 			drawboard(screen)
 		end
-		id = @guarded signal_connect(resetbtn, "clicked") do widget
+		@guarded signal_connect(resetbtn, "clicked") do widget
 			reset!(screen)
 			drawboard(screen)
 		end
-		id = @guarded signal_connect(runbtn, "clicked") do widget
+		@guarded signal_connect(runbtn, "clicked") do widget
 			screen.board.maxsteps=spsteps.value[Int]
 			reset!(screen)
 			@async run!(screen)
 		end
-		id = @guarded signal_connect(spsteps, "value-changed") do widget
+		@guarded signal_connect(spsteps, "value-changed") do widget
 			screen.board.maxsteps=spsteps.value[Int]
 		end
-		id = @guarded signal_connect(run2btn, "clicked") do widget
+		@guarded signal_connect(run2btn, "clicked") do widget
 			shots=spshots.value[Int]
 			d=run(screen.board,shots)
 			println(d)
@@ -220,37 +220,37 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			end
 			info_dialog(str,screen.win)
 		end
-		id = @guarded signal_connect(zoomscale, "value-changed") do widget
+		@guarded signal_connect(zoomscale, "value-changed") do widget
 			wval=Gtk.G_.value(widget)
 			screen.sizemod=wval/10
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
 			drawboard(screen)
 		end
-		id = @guarded signal_connect(xoscale, "value-changed") do widget
+		@guarded signal_connect(xoscale, "value-changed") do widget
 			screen.panx=-Gtk.G_.value(widget)*10
 			drawboard(screen)
 		end
-		id = @guarded signal_connect(yoscale, "value-changed") do widget
+		@guarded signal_connect(yoscale, "value-changed") do widget
 			screen.pany=-Gtk.G_.value(widget)*10
 			drawboard(screen)
 		end
-		id = @guarded signal_connect(deletecheck, "clicked") do widget
+		@guarded signal_connect(deletecheck, "clicked") do widget
 			screen.delete=widget.active[Bool]
 		end
-		id = @guarded signal_connect(expbtn, "clicked") do widget
+		@guarded signal_connect(expbtn, "clicked") do widget
 			x=Int(Gtk.G_.value(spexpx))
 			y=Int(Gtk.G_.value(spexpy))
 			r=Gtk.G_.value(spexpshell)
 			remain=expandboard!(screen.board,Integer(r),[(x,y,2)])
 			drawboard(screen)
 		end
-		id = @guarded signal_connect(centerbtn, "clicked") do widget
+		@guarded signal_connect(centerbtn, "clicked") do widget
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
 			center!(screen,(x,y))
 		end
-		id = @guarded signal_connect(placebtn, "clicked") do widget
+		@guarded signal_connect(placebtn, "clicked") do widget
 			x=Gtk.G_.value(spexpx)
 			y=Gtk.G_.value(spexpy)
 			nu=components[Gtk.bytestring( GAccessor.active_text(compscombo) )]
@@ -300,7 +300,17 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 				hide(dirscombo)
 				hide(spvar)
 				screen.selected=hex
-				GAccessor.text(complab,"\n"*id(comp)*" at "*string(hex))
+				labstr="\n$(id(comp)) "
+				if isa(comp,Emitter)
+					for ind in 1:length(screen.board.emitters)
+						if screen.board.emitters[ind].loc==hex
+							labstr*=string(ind)*" "
+							break
+						end
+					end
+				end
+				labstr*="at "*string(hex)
+				GAccessor.text(complab,labstr)
 				if :dir in fieldnames(typeof(comp))
 					staind=0
 					for c in keys(directions)
@@ -430,7 +440,7 @@ function drawboard(screen,ctx,w,h)
 		end
 		loc=hex_to_pixel(p.loc[1],p.loc[2],size)
 		floc=(loc[1]+offset[1]+w/2,loc[2]+offset[2]+h/2)
-		rad=size*0.866/2*abs(p.amp)
+		rad=size*0.866/2*abs(p.amp)+1
 		set_source_rgba(ctx,1,1,1,0.7) 
 		arc(ctx, floc[1],floc[2],rad, 0, 2pi)
 		fill(ctx)
