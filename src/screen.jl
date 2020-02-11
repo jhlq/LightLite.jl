@@ -456,6 +456,10 @@ function drawboard(screen::Screen)
 	w=width(screen.c)
 	drawboard(screen,ctx,w,h)
 end
+function step!(screen::Screen,steps::Int=1)
+	step!(screen.board,steps)
+	drawboard(screen)
+end
 function run!(screen::Screen,steps::Int)
 	if !screen.running
 		return
