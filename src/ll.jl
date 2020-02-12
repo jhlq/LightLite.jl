@@ -40,9 +40,9 @@ components["rz"]=CustomGate((0,0,0),[4],[],"rz","rz")
 components["Toffoli"]=CustomGate((0,0,0),[],[],"Toffoli","ccx")
 
 gatefuns=Dict{String,Function}() #define apply! for CustomGates
-gatefuns["rx"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,rx(pi/getvar(r)))*b.state.state;r.photons=[];end
-gatefuns["ry"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,ry(pi/getvar(r)))*b.state.state;r.photons=[];end
-gatefuns["rz"]=(b::Board,r::CustomGate)->begin;b.state.state=makemat(b.state.n,r.photons,rz(pi/getvar(r)))*b.state.state;r.photons=[];end
+gatefuns["rx"]=(b::Board,r::CustomGate)->begin;var=getvar(r);if var!=0;b.state.state=makemat(b.state.n,r.photons,rx(pi/var))*b.state.state;end;r.photons=[];end
+gatefuns["ry"]=(b::Board,r::CustomGate)->begin;var=getvar(r);if var!=0;b.state.state=makemat(b.state.n,r.photons,ry(pi/var))*b.state.state;end;r.photons=[];end
+gatefuns["rz"]=(b::Board,r::CustomGate)->begin;var=getvar(r);if var!=0;b.state.state=makemat(b.state.n,r.photons,rz(pi/var))*b.state.state;end;r.photons=[];end
 gatefuns["Toffoli"]=(b::Board,r::CustomGate)->begin;if length(r.photons)>2;apply!(b.state,r.photons,toffoli!);trap!(b,r.photons,0);r.photons=[];else;trap!(b,r.photons);end;end
 
 examples=Dict{String,String}()

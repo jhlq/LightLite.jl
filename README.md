@@ -25,4 +25,5 @@ S=rz(pi/2), S†=rz(-pi/2), T=rz(pi/4), T†=rz(-pi/4).
 
 Useful links:  
 https://algassert.com/quirk  
-https://www.st-andrews.ac.uk/physics/quvis/simulations_html5/sims/blochsphere/blochsphere.html
+https://www.st-andrews.ac.uk/physics/quvis/simulations_html5/sims/blochsphere/blochsphere.html  
+https://qiskit.org/textbook/preface.html
