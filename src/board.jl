@@ -59,6 +59,7 @@ mutable struct Board
 	components::Array{Component}
 	output::String
 	maxsteps::Int
+	step::Int
 end
 function newBoard(shells=6,initlocs=[(0,0,2)],grid=0,map=Dict())
 	if grid==0
@@ -67,7 +68,7 @@ function newBoard(shells=6,initlocs=[(0,0,2)],grid=0,map=Dict())
 	for loc in grid
 		map[loc]=0
 	end
-	board=Board("circuit.ll",grid,shells,map,[],false,[],photons(0),[],"",100)
+	board=Board("circuit.ll",grid,shells,map,[],false,[],photons(0),[],"",100,0)
 	return board
 end
 getindex(b::Board,x::Int,y::Int,z::Int)=haskey(b.map,(x,y,z)) ? b.map[(x,y,z)] : nothing
@@ -117,7 +118,7 @@ end
 function step!(b::Board,steps::Int=1)
 	if !b.emitted
 		for em in b.emitters
-			push!(b.photons,Photon(em.pol,em.loc,em.dir,0,0.2,0))
+			push!(b.photons,Photon(em.pol,em.loc,em.dir,0,0.25,0))
 		end
 		b.state=photons(b.photons)
 		b.emitted=true
@@ -144,8 +145,11 @@ function step!(b::Board,steps::Int=1)
 		for c in cs
 			apply!(b,c)
 		end
+		b.step+=1
 	end	
 end
+p(b::Board)=p(b.state)
+states(b::Board)=states(b.state)
 function reset!(b::Board)
 	b.photons=[]
 	for c in b.components
@@ -154,6 +158,7 @@ function reset!(b::Board)
 	b.emitted=false
 	b.state=photons(0)
 	b.output=""
+	b.step=0
 end
 function run!(b::Board)
 	reset!(b)

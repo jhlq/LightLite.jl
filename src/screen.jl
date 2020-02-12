@@ -35,6 +35,8 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		outputlabel=GtkLabel("")
 		stepbtn=GtkButton("Step")
 		resetbtn=GtkButton("Reset")
+		statebtn=GtkButton("State")
+		resumebtn=GtkButton("Resume")
 		runbtn=GtkButton("Run")
 		spsteps=GtkSpinButton(1:1000000)
 		Gtk.G_.value(spsteps,screen.board.maxsteps)
@@ -93,6 +95,9 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 		row+=1
 		g[2,row]=stepbtn
 		g[3,row]=resetbtn
+		row+=1
+		g[2,row]=statebtn
+		g[3,row]=resumebtn
 		row+=1
 		g[1,row]=runbtn
 		g[2,row]=spsteps
@@ -190,9 +195,29 @@ function newScreen(board=0, sizemod=5, size=30, offsetx=0, offsety=0, bgcolor=(0
 			reset!(screen)
 			drawboard(screen)
 		end
+		@guarded signal_connect(statebtn, "clicked") do widget
+			screen.running=false
+			if length(screen.board.photons)==0
+				info_dialog("No photons emitted.",screen.win)
+				return
+			end
+			d=states(screen.board)
+			str="States\n"
+			for label in screen.board.state.labels
+				if haskey(d,label)
+					rval=round(d[label],digits=5)
+					pr=round(p(d[label]),digits=5)
+					str*="$label: $rval ($pr)\n"
+				end
+			end
+			info_dialog(str,screen.win)
+		end
+		@guarded signal_connect(resumebtn, "clicked") do widget
+			screen.running=true
+			@async runstep!(screen)
+		end
 		@guarded signal_connect(runbtn, "clicked") do widget
 			screen.board.maxsteps=spsteps.value[Int]
-			reset!(screen)
 			@async run!(screen)
 		end
 		@guarded signal_connect(spsteps, "value-changed") do widget
@@ -460,16 +485,17 @@ function step!(screen::Screen,steps::Int=1)
 	step!(screen.board,steps)
 	drawboard(screen)
 end
-function run!(screen::Screen,steps::Int)
+p(s::Screen)=p(s.board.state)
+states(s::Screen)=states(s.board.state)
+function runstep!(screen::Screen)
 	if !screen.running
 		return
-	elseif steps<1
+	elseif screen.board.step>=screen.board.maxsteps
 		screen.running=false
 		return
 	end
 	t0=time()
 	step!(screen.board)
-	steps-=1
 	drawboard(screen)
 	tt=1/screen.fps
 	t=time()-t0
@@ -477,15 +503,12 @@ function run!(screen::Screen,steps::Int)
 	if rt>0
 		sleep(rt)
 	end
-	run!(screen,steps)
+	runstep!(screen)
 end
 function run!(screen::Screen)
-	if screen.running
-		println("Already running.")
-		return
-	end
+	reset!(screen)
 	screen.running=true
-	run!(screen,screen.board.maxsteps)
+	runstep!(screen)
 end
 function reset!(screen::Screen)
 	screen.running=false

@@ -1,6 +1,13 @@
 [![Build Status](https://travis-ci.org/jhlq/LightLite.jl.svg?branch=master)](https://travis-ci.org/jhlq/LightLite.jl)
 
 # LightLite.jl
+Install by:
+```
+import Pkg
+Pkg.add(Pkg.PackageSpec(url="https://github.com/jhlq/LightLite.jl", rev="master"))
+using LightLite
+```
+
 To start either call example() or open a blank board with:
 ```
 screen=newScreen();

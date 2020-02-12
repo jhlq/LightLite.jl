@@ -177,6 +177,15 @@ function states(ps::Photons,s::String)
 	end
 	return ms
 end
+function states(ps::Photons)
+	d=Dict{String,Complex}()
+	for i in 1:length(ps.state)
+		if ps.state[i]!=0
+			d[ps.labels[i]]=ps.state[i]
+		end
+	end
+	return d
+end
 function p(ps::Photons,s::String)
 	if in('*',s)
 		ws=states(ps,s)
